@@ -1,10 +1,6 @@
 //! Animation support for HUB75 displays, inspired by microbit patterns
 
-use crate::{
-    color::Hub75Color,
-    frame_buffer::Hub75FrameBuffer,
-    AnimationError, Hub75Error,
-};
+use crate::{color::Hub75Color, frame_buffer::Hub75FrameBuffer, AnimationError, Hub75Error};
 use embassy_time::{Duration, Instant};
 
 /// Trait for animation effects
@@ -36,8 +32,8 @@ pub enum AnimationEffect {
     Wipe,
 }
 
-impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize> 
-    AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS> for AnimationEffect 
+impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
+    AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS> for AnimationEffect
 {
     fn apply_effect(
         &self,
@@ -78,7 +74,9 @@ impl AnimationEffect {
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
                 let pixel = if x + sequence < WIDTH {
-                    current_frame.get_pixel(x + sequence, y).unwrap_or(Hub75Color::black())
+                    current_frame
+                        .get_pixel(x + sequence, y)
+                        .unwrap_or(Hub75Color::black())
                 } else {
                     let next_x = x + sequence - WIDTH;
                     next.get_pixel(next_x, y).unwrap_or(Hub75Color::black())
@@ -96,7 +94,11 @@ impl AnimationEffect {
         sequence: usize,
     ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         let mut result = Hub75FrameBuffer::new();
-        let fade_factor = if sequence < 8 { sequence } else { 15 - sequence };
+        let fade_factor = if sequence < 8 {
+            sequence
+        } else {
+            15 - sequence
+        };
 
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
@@ -273,7 +275,11 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
             return Err(AnimationError::InvalidData);
         }
 
-        let total_steps = <AnimationEffect as AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS>>::total_steps(&effect, frame_count);
+        let total_steps =
+            <AnimationEffect as AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS>>::total_steps(
+                &effect,
+                frame_count,
+            );
         let step_duration = total_duration
             .checked_div(total_steps as u32)
             .ok_or(AnimationError::TooFast)?;
@@ -314,7 +320,9 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     }
 
     /// Generate the current frame based on the effect and current state
-    fn generate_current_frame(&self) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+    fn generate_current_frame(
+        &self,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         let current_frame = self.data.get_frame(self.frame_index)?;
         let next_frame = if self.frame_index + 1 < self.data.frame_count() {
             Some(self.data.get_frame(self.frame_index + 1)?)
@@ -322,10 +330,14 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
             None
         };
 
-        <AnimationEffect as AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS>>::apply_effect(&self.effect, &current_frame, next_frame.as_ref(), self.sequence, self.total_steps)
+        <AnimationEffect as AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS>>::apply_effect(
+            &self.effect,
+            &current_frame,
+            next_frame.as_ref(),
+            self.sequence,
+            self.total_steps,
+        )
     }
-
-
 
     /// Advance to the next step in the animation
     fn advance_step(&mut self) {

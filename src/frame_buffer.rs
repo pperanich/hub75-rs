@@ -36,7 +36,11 @@ impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
 
     /// Get a mutable reference to a pixel at the specified coordinates
     #[inline(always)]
-    pub fn pixel_mut(&mut self, x: usize, y: usize) -> Result<&mut Hub75Color<COLOR_BITS>, Hub75Error> {
+    pub fn pixel_mut(
+        &mut self,
+        x: usize,
+        y: usize,
+    ) -> Result<&mut Hub75Color<COLOR_BITS>, Hub75Error> {
         if x >= WIDTH || y >= HEIGHT {
             Err(Hub75Error::InvalidCoordinates)
         } else {
@@ -56,7 +60,12 @@ impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
 
     /// Set a pixel at the specified coordinates
     #[inline(always)]
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: Hub75Color<COLOR_BITS>) -> Result<(), Hub75Error> {
+    pub fn set_pixel(
+        &mut self,
+        x: usize,
+        y: usize,
+        color: Hub75Color<COLOR_BITS>,
+    ) -> Result<(), Hub75Error> {
         *self.pixel_mut(x, y)? = color;
         Ok(())
     }
@@ -81,7 +90,12 @@ impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     /// # Safety
     /// The caller must ensure that x < WIDTH and y < HEIGHT
     #[inline(always)]
-    pub unsafe fn set_pixel_unchecked(&mut self, x: usize, y: usize, color: Hub75Color<COLOR_BITS>) {
+    pub unsafe fn set_pixel_unchecked(
+        &mut self,
+        x: usize,
+        y: usize,
+        color: Hub75Color<COLOR_BITS>,
+    ) {
         *self.pixels.get_unchecked_mut(y).get_unchecked_mut(x) = color;
     }
 

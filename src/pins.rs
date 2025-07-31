@@ -72,12 +72,30 @@ impl<P: OutputPin> Hub75Pins<P> {
 
     /// Create a new pin configuration for a standard HUB75 display
     pub fn new(
-        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
-        a: P, b: P, c: P, d: Option<P>, e: Option<P>,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        d: Option<P>,
+        e: Option<P>,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
         Self {
-            rgb: Hub75RgbPins { r1, g1, b1, r2, g2, b2 },
+            rgb: Hub75RgbPins {
+                r1,
+                g1,
+                b1,
+                r2,
+                g2,
+                b2,
+            },
             address: Hub75AddressPins { a, b, c, d, e },
             control: Hub75ControlPins { clk, lat, oe },
         }
@@ -85,29 +103,74 @@ impl<P: OutputPin> Hub75Pins<P> {
 
     /// Create pin configuration for 32x16 display (3 address pins)
     pub fn new_32x16(
-        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
-        a: P, b: P, c: P,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
         Self::new(r1, g1, b1, r2, g2, b2, a, b, c, None, None, clk, lat, oe)
     }
 
     /// Create pin configuration for 64x32 display (4 address pins)
     pub fn new_64x32(
-        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
-        a: P, b: P, c: P, d: P,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        d: P,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
         Self::new(r1, g1, b1, r2, g2, b2, a, b, c, Some(d), None, clk, lat, oe)
     }
 
     /// Create pin configuration for 64x64 display (5 address pins)
     pub fn new_64x64(
-        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
-        a: P, b: P, c: P, d: P, e: P,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        d: P,
+        e: P,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
-        Self::new(r1, g1, b1, r2, g2, b2, a, b, c, Some(d), Some(e), clk, lat, oe)
+        Self::new(
+            r1,
+            g1,
+            b1,
+            r2,
+            g2,
+            b2,
+            a,
+            b,
+            c,
+            Some(d),
+            Some(e),
+            clk,
+            lat,
+            oe,
+        )
     }
 
     /// Initialize all pins to their default states
@@ -190,15 +253,24 @@ impl<P: OutputPin> Hub75PinsBuilder<P> {
 
         Ok(Hub75Pins {
             rgb: Hub75RgbPins {
-                r1: rgb.0, g1: rgb.1, b1: rgb.2,
-                r2: rgb.3, g2: rgb.4, b2: rgb.5,
+                r1: rgb.0,
+                g1: rgb.1,
+                b1: rgb.2,
+                r2: rgb.3,
+                g2: rgb.4,
+                b2: rgb.5,
             },
             address: Hub75AddressPins {
-                a: address.0, b: address.1, c: address.2,
-                d: address.3, e: address.4,
+                a: address.0,
+                b: address.1,
+                c: address.2,
+                d: address.3,
+                e: address.4,
             },
             control: Hub75ControlPins {
-                clk: control.0, lat: control.1, oe: control.2,
+                clk: control.0,
+                lat: control.1,
+                oe: control.2,
             },
         })
     }
@@ -208,13 +280,21 @@ impl<P: OutputPin> Hub75RgbPins<P> {
     /// Set RGB values for both upper and lower halves
     pub fn set_rgb(
         &mut self,
-        upper_r: bool, upper_g: bool, upper_b: bool,
-        lower_r: bool, lower_g: bool, lower_b: bool,
+        upper_r: bool,
+        upper_g: bool,
+        upper_b: bool,
+        lower_r: bool,
+        lower_g: bool,
+        lower_b: bool,
     ) -> Result<(), Hub75Error> {
         // Helper macro to set pin state
         macro_rules! set_pin {
             ($pin:expr, $state:expr) => {
-                if $state { pin_op!($pin.set_high()) } else { pin_op!($pin.set_low()) }
+                if $state {
+                    pin_op!($pin.set_high())
+                } else {
+                    pin_op!($pin.set_low())
+                }
             };
         }
 
@@ -241,7 +321,11 @@ impl<P: OutputPin> Hub75AddressPins<P> {
         // Helper macro to set address pin based on bit
         macro_rules! set_addr_pin {
             ($pin:expr, $bit:expr) => {
-                if (row & (1 << $bit)) != 0 { pin_op!($pin.set_high()) } else { pin_op!($pin.set_low()) }
+                if (row & (1 << $bit)) != 0 {
+                    pin_op!($pin.set_high())
+                } else {
+                    pin_op!($pin.set_low())
+                }
             };
         }
 

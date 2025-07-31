@@ -27,9 +27,21 @@ impl<const BITS: usize> Hub75Color<BITS> {
     /// Values are automatically clamped to the bit depth
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self {
-            r: if r > Self::MAX_VALUE { Self::MAX_VALUE } else { r },
-            g: if g > Self::MAX_VALUE { Self::MAX_VALUE } else { g },
-            b: if b > Self::MAX_VALUE { Self::MAX_VALUE } else { b },
+            r: if r > Self::MAX_VALUE {
+                Self::MAX_VALUE
+            } else {
+                r
+            },
+            g: if g > Self::MAX_VALUE {
+                Self::MAX_VALUE
+            } else {
+                g
+            },
+            b: if b > Self::MAX_VALUE {
+                Self::MAX_VALUE
+            } else {
+                b
+            },
         }
     }
 
@@ -40,22 +52,38 @@ impl<const BITS: usize> Hub75Color<BITS> {
 
     /// Create a white color (all components at maximum)
     pub const fn white() -> Self {
-        Self { r: Self::MAX_VALUE, g: Self::MAX_VALUE, b: Self::MAX_VALUE }
+        Self {
+            r: Self::MAX_VALUE,
+            g: Self::MAX_VALUE,
+            b: Self::MAX_VALUE,
+        }
     }
 
     /// Create a red color
     pub const fn red() -> Self {
-        Self { r: Self::MAX_VALUE, g: 0, b: 0 }
+        Self {
+            r: Self::MAX_VALUE,
+            g: 0,
+            b: 0,
+        }
     }
 
     /// Create a green color
     pub const fn green() -> Self {
-        Self { r: 0, g: Self::MAX_VALUE, b: 0 }
+        Self {
+            r: 0,
+            g: Self::MAX_VALUE,
+            b: 0,
+        }
     }
 
     /// Create a blue color
     pub const fn blue() -> Self {
-        Self { r: 0, g: 0, b: Self::MAX_VALUE }
+        Self {
+            r: 0,
+            g: 0,
+            b: Self::MAX_VALUE,
+        }
     }
 
     /// Get the bit value for a specific bit plane
