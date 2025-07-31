@@ -1,9 +1,62 @@
 //! Pin configuration and management for HUB75 displays
+//!
+//! This module provides structures for organizing and managing the various pins
+//! required for HUB75 LED matrix displays. The pins are grouped by function:
+//!
+//! - **RGB pins**: Data lines for color information (upper and lower halves)
+//! - **Address pins**: Row selection lines (A, B, C, D, E)
+//! - **Control pins**: Timing and synchronization (CLK, LAT, OE)
+//!
+//! # HUB75 Pin Layout
+//!
+//! A typical HUB75 connector has the following pins:
+//!
+//! ```text
+//! R1  G1  B1  GND
+//! R2  G2  B2  GND  
+//! A   B   C   D
+//! CLK LAT OE  GND
+//! ```
+//!
+//! # Examples
+//!
+//! ```rust,no_run
+//! use hub75::{Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
+//! use embedded_hal::digital::OutputPin;
+//!
+//! # fn example(pin: impl OutputPin + Clone) {
+//! let pins = Hub75Pins {
+//!     rgb: Hub75RgbPins {
+//!         r1: pin.clone(), g1: pin.clone(), b1: pin.clone(),
+//!         r2: pin.clone(), g2: pin.clone(), b2: pin.clone(),
+//!     },
+//!     address: Hub75AddressPins {
+//!         a: pin.clone(), b: pin.clone(), c: pin.clone(),
+//!         d: Some(pin.clone()), e: None, // D pin optional, E pin not used
+//!     },
+//!     control: Hub75ControlPins {
+//!         clk: pin.clone(), lat: pin.clone(), oe: pin,
+//!     },
+//! };
+//! # }
+//! ```
 
 use crate::{pin_op, Hub75Error};
 use embedded_hal::digital::OutputPin;
 
 /// Complete pin configuration for a HUB75 display
+///
+/// This structure organizes all the pins required for a HUB75 display into
+/// logical groups. It provides a clean interface for pin management and
+/// ensures all required pins are properly configured.
+///
+/// # Pin Requirements
+///
+/// - **6 RGB pins**: R1, G1, B1, R2, G2, B2 (always required)
+/// - **3-5 address pins**: A, B, C (required), D, E (optional, depends on panel size)
+/// - **3 control pins**: CLK, LAT, OE (always required)
+///
+/// Total: 12-16 pins depending on panel size
 pub struct Hub75Pins<P: OutputPin> {
     /// RGB pins for upper and lower halves
     pub rgb: Hub75RgbPins<P>,

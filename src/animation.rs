@@ -1,7 +1,63 @@
-//! Animation support for HUB75 displays, inspired by microbit patterns
+//! Animation support for HUB75 displays with frame-based timing
+//!
+//! This module provides a flexible animation system that works with any async runtime.
+//! Instead of using time-based animations, it uses frame-based timing which gives
+//! more predictable results and better performance.
+//!
+//! # Key Concepts
+//!
+//! - **Frame-based timing**: Animations advance based on frame count rather than elapsed time
+//! - **Effect system**: Different visual effects can be applied to frame transitions
+//! - **Generic runtime**: Works with Embassy, RTIC, or any async runtime
+//!
+//! # Animation Effects
+//!
+//! - `None`: Direct frame display without transitions
+//! - `Fade`: Smooth fade between frames
+//! - `Slide`: Sliding transition effects
+//! - `Scroll`: Scrolling text or image effects
+//!
+//! # Examples
+//!
+//! ```rust,no_run
+//! use hub75::{Animation, AnimationData, AnimationEffect, Hub75FrameBuffer};
+//!
+//! # fn example() -> Result<(), hub75::AnimationError> {
+//! // Create some frames
+//! let frames = [
+//!     Hub75FrameBuffer::<64, 32, 6>::new(),
+//!     Hub75FrameBuffer::<64, 32, 6>::new(),
+//! ];
+//!
+//! // Create an animation with fade effect over 120 frames
+//! let mut animation = Animation::new(
+//!     AnimationData::Frames(&frames),
+//!     AnimationEffect::Fade,
+//!     120, // Total frames for the animation
+//! )?;
+//!
+//! // Advance the animation frame by frame
+//! loop {
+//!     match animation.next() {
+//!         hub75::AnimationState::Apply(frame) => {
+//!             // Display this frame
+//!             break;
+//!         }
+//!         hub75::AnimationState::Wait => {
+//!             // Continue to next frame
+//!             continue;
+//!         }
+//!         hub75::AnimationState::Done => {
+//!             // Animation finished
+//!             break;
+//!         }
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
 
 use crate::{color::Hub75Color, frame_buffer::Hub75FrameBuffer, AnimationError, Hub75Error};
-use embassy_time::{Duration, Instant};
 
 /// Trait for animation effects
 pub trait AnimationEffectTrait<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize> {
@@ -255,10 +311,10 @@ pub struct Animation<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BI
     total_steps: usize,
     /// Animation effect to apply
     effect: AnimationEffect,
-    /// Duration between steps
-    step_duration: Duration,
-    /// Time when the next step should occur
-    next_step_time: Instant,
+    /// Number of frames between steps
+    frames_per_step: usize,
+    /// Current frame counter
+    frame_counter: usize,
 }
 
 impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
@@ -268,7 +324,7 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     pub fn new(
         data: AnimationData<'a, WIDTH, HEIGHT, COLOR_BITS>,
         effect: AnimationEffect,
-        total_duration: Duration,
+        total_frames: usize,
     ) -> Result<Self, AnimationError> {
         let frame_count = data.frame_count();
         if frame_count == 0 {
@@ -280,9 +336,7 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
                 &effect,
                 frame_count,
             );
-        let step_duration = total_duration
-            .checked_div(total_steps as u32)
-            .ok_or(AnimationError::TooFast)?;
+        let frames_per_step = total_frames / total_steps.max(1);
 
         Ok(Self {
             data,
@@ -291,20 +345,24 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
             step: 0,
             total_steps,
             effect,
-            step_duration,
-            next_step_time: Instant::now(),
+            frames_per_step,
+            frame_counter: 0,
         })
     }
 
     /// Get the next animation state
-    pub fn next(&mut self, now: Instant) -> AnimationState<WIDTH, HEIGHT, COLOR_BITS> {
+    pub fn next(&mut self) -> AnimationState<WIDTH, HEIGHT, COLOR_BITS> {
         if self.step >= self.total_steps {
             return AnimationState::Done;
         }
 
-        if now < self.next_step_time {
+        self.frame_counter += 1;
+        if self.frame_counter < self.frames_per_step {
             return AnimationState::Wait;
         }
+
+        // Reset frame counter for next step
+        self.frame_counter = 0;
 
         // Generate the current frame based on the effect
         let frame = match self.generate_current_frame() {
@@ -314,7 +372,6 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
 
         // Advance to the next step
         self.advance_step();
-        self.next_step_time += self.step_duration;
 
         AnimationState::Apply(frame)
     }
@@ -381,7 +438,7 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
         self.frame_index = 0;
         self.sequence = 0;
         self.step = 0;
-        self.next_step_time = Instant::now();
+        self.frame_counter = 0;
     }
 }
 
@@ -399,7 +456,7 @@ mod tests {
         let animation = Animation::new(
             AnimationData::Frames(&frames),
             AnimationEffect::None,
-            Duration::from_secs(1),
+            60, // 60 frames total
         );
 
         assert!(animation.is_ok());
@@ -435,14 +492,14 @@ mod tests {
         let none_anim = Animation::new(
             AnimationData::Frames(&frames),
             AnimationEffect::None,
-            Duration::from_secs(1),
+            60, // 60 frames total
         )
         .unwrap();
 
         let slide_anim = Animation::new(
             AnimationData::Frames(&frames),
             AnimationEffect::Slide,
-            Duration::from_secs(1),
+            60, // 60 frames total
         )
         .unwrap();
 

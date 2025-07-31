@@ -1,8 +1,8 @@
 //! Core HUB75 display driver implementation
 
 use crate::{color::Hub75Color, frame_buffer::Hub75FrameBuffer, pins::Hub75Pins, Hub75Error};
-use embassy_time::{Duration, Instant, Timer};
 use embedded_hal::digital::OutputPin;
+use embedded_hal_async::delay::DelayNs;
 
 /// Brightness levels for the display
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +54,46 @@ impl core::ops::Sub<u8> for Brightness {
     }
 }
 
-/// Main HUB75 display driver
+/// Main HUB75 display driver with configurable dimensions and color depth
+///
+/// This is the core driver for HUB75 RGB LED matrix displays. It provides:
+/// - Binary Code Modulation (BCM) for high color depth
+/// - Double buffering for smooth animations
+/// - Configurable refresh rates and brightness
+/// - embedded-graphics integration
+///
+/// # Type Parameters
+///
+/// - `P`: Pin type implementing `OutputPin` (e.g., `embassy_rp::gpio::Output`)
+/// - `WIDTH`: Display width in pixels (e.g., 64)
+/// - `HEIGHT`: Display height in pixels (e.g., 32)
+/// - `COLOR_BITS`: Color depth in bits per channel (typically 4, 6, or 8)
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use hub75::{Hub75Display, Hub75Pins};
+/// use embedded_hal_async::delay::DelayNs;
+///
+/// # async fn example(pins: Hub75Pins<impl embedded_hal::digital::OutputPin>, mut delay: impl DelayNs) -> Result<(), hub75::Hub75Error> {
+/// // Create a 64x32 display with 6-bit color depth
+/// let mut display = Hub75Display::<_, 64, 32, 6>::new(pins)?;
+///
+/// // Enable double buffering for smooth updates
+/// display.set_double_buffering(true);
+///
+/// // Render a frame
+/// display.render_frame(&mut delay).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Memory Usage
+///
+/// The display uses two frame buffers (front and back) when double buffering is enabled.
+/// Memory usage per buffer: `WIDTH * HEIGHT * COLOR_BITS / 8` bytes.
+///
+/// For a 64x32 display with 6-bit color: `64 * 32 * 6 / 8 = 1,536 bytes` per buffer.
 pub struct Hub75Display<
     P: OutputPin + 'static,
     const WIDTH: usize,
@@ -73,8 +112,8 @@ pub struct Hub75Display<
     current_bit_plane: usize,
     /// Display brightness
     brightness: Brightness,
-    /// Base refresh interval
-    refresh_interval: Duration,
+    /// Base refresh interval in nanoseconds
+    refresh_interval_ns: u32,
     /// Whether double buffering is enabled
     double_buffering: bool,
 }
@@ -85,6 +124,46 @@ where
     P: OutputPin,
 {
     /// Create a new HUB75 display driver
+    ///
+    /// Initializes the display with the provided pin configuration. The pins are
+    /// automatically initialized to their default states and the display dimensions
+    /// are validated against the available address pins.
+    ///
+    /// # Arguments
+    ///
+    /// * `pins` - Configured HUB75 pins for RGB data, addressing, and control
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(Hub75Display)` on success, or `Err(Hub75Error)` if:
+    /// - Pin initialization fails
+    /// - Display dimensions exceed addressable rows (HEIGHT/2 > 2^address_pins)
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
+    /// use embedded_hal::digital::OutputPin;
+    ///
+    /// # fn example(pins: impl OutputPin + Clone) -> Result<(), hub75::Hub75Error> {
+    /// let hub75_pins = Hub75Pins {
+    ///     rgb: Hub75RgbPins {
+    ///         r1: pins.clone(), g1: pins.clone(), b1: pins.clone(),
+    ///         r2: pins.clone(), g2: pins.clone(), b2: pins.clone(),
+    ///     },
+    ///     address: Hub75AddressPins {
+    ///         a: pins.clone(), b: pins.clone(), c: pins.clone(),
+    ///         d: Some(pins.clone()), e: None,
+    ///     },
+    ///     control: Hub75ControlPins {
+    ///         clk: pins.clone(), lat: pins.clone(), oe: pins,
+    ///     },
+    /// };
+    ///
+    /// let display = Hub75Display::<_, 64, 32, 6>::new(hub75_pins)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn new(mut pins: Hub75Pins<P>) -> Result<Self, Hub75Error> {
         // Initialize pins to default state
         pins.init()?;
@@ -102,7 +181,7 @@ where
             current_row: 0,
             current_bit_plane: 0,
             brightness: Brightness::default(),
-            refresh_interval: Duration::from_micros(100), // 10kHz base refresh rate
+            refresh_interval_ns: 100_000, // 100 microseconds = 10kHz base refresh rate
             double_buffering: false,
         })
     }
@@ -143,9 +222,9 @@ where
         self.brightness
     }
 
-    /// Set the base refresh interval
-    pub fn set_refresh_interval(&mut self, interval: Duration) {
-        self.refresh_interval = interval;
+    /// Set the base refresh interval in nanoseconds
+    pub fn set_refresh_interval_ns(&mut self, interval_ns: u32) {
+        self.refresh_interval_ns = interval_ns;
     }
 
     /// Clear the display (set all pixels to black)
@@ -210,7 +289,7 @@ where
     }
 
     /// Render a complete frame using Binary Code Modulation
-    pub async fn render_frame(&mut self) -> Result<(), Hub75Error> {
+    pub async fn render_frame(&mut self, delay: &mut impl DelayNs) -> Result<(), Hub75Error> {
         for bit_plane in 0..COLOR_BITS {
             for row in 0..(HEIGHT / 2) {
                 self.current_row = row;
@@ -219,14 +298,13 @@ where
                 self.render_bit_plane()?;
 
                 // BCM timing - exponentially longer delays for higher bit planes
-                let bit_duration = self.refresh_interval * (1 << bit_plane);
+                let bit_duration_ns = self.refresh_interval_ns * (1 << bit_plane);
 
                 // Apply brightness scaling
-                let brightness_factor = self.brightness.level() as u64;
-                let scaled_duration =
-                    Duration::from_micros(bit_duration.as_micros() * brightness_factor / 255);
+                let brightness_factor = self.brightness.level() as u32;
+                let scaled_duration_ns = bit_duration_ns * brightness_factor / 255;
 
-                Timer::after(scaled_duration).await;
+                delay.delay_ns(scaled_duration_ns).await;
 
                 // Disable output before moving to next row/bit plane
                 self.pins.control.disable_output().ok();
@@ -236,12 +314,12 @@ where
         Ok(())
     }
 
-    /// Continuous refresh task for embassy
-    pub async fn refresh_task(&mut self) -> ! {
+    /// Continuous refresh task
+    pub async fn refresh_task(&mut self, delay: &mut impl DelayNs) -> ! {
         loop {
-            if self.render_frame().await.is_err() {
+            if self.render_frame(delay).await.is_err() {
                 // Handle error - maybe reset pins or continue
-                Timer::after(Duration::from_millis(1)).await;
+                delay.delay_ns(1_000_000).await; // 1ms
             }
         }
     }
@@ -250,7 +328,8 @@ where
     pub async fn display_frame(
         &mut self,
         frame: Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
-        duration: Duration,
+        duration_ns: u32,
+        delay: &mut impl DelayNs,
     ) -> Result<(), Hub75Error> {
         // Copy frame to appropriate buffer
         if self.double_buffering {
@@ -260,10 +339,12 @@ where
             self.front_buffer.copy_from(&frame);
         }
 
-        let end_time = Instant::now() + duration;
+        // Calculate how many frames to render based on duration and refresh rate
+        let frame_duration_ns = self.refresh_interval_ns * (1 << (COLOR_BITS - 1)); // Approximate frame time
+        let num_frames = duration_ns / frame_duration_ns;
 
-        while Instant::now() < end_time {
-            self.render_frame().await?;
+        for _ in 0..num_frames.max(1) {
+            self.render_frame(delay).await?;
         }
 
         Ok(())

@@ -1,12 +1,12 @@
 [package]
-name = "hub75-embassy"
+name = "hub75"
 version = "0.1.0"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
-description = "Embassy-compatible HUB75 RGB LED matrix driver with embedded-graphics support"
+description = "Generic async HUB75 RGB LED matrix driver with embedded-graphics support"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/yourusername/hub75-embassy"
-keywords = ["embedded", "hub75", "led-matrix", "embassy", "embedded-graphics"]
+repository = "https://github.com/yourusername/hub75"
+keywords = ["embedded", "hub75", "led-matrix", "async", "embedded-graphics"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
@@ -15,9 +15,9 @@ embedded-hal = "1.0"
 embedded-hal-async = "1.0"
 nb = "1.1"
 
-# Embassy dependencies
-embassy-time = "0.4"
-embassy-sync = "0.7"
+# Removed embassy dependencies to make crate more generic
+# embassy-time = "0.4"
+# embassy-sync = "0.7"
 
 # Graphics support
 embedded-graphics-core = "0.4"

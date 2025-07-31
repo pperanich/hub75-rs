@@ -24,7 +24,7 @@ use embedded_graphics::{
     },
     text::Text,
 };
-use hub75_embassy::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
+use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_probe as _};
 
 type Display = Hub75Display<Output<'static>, 64, 32, 6>;

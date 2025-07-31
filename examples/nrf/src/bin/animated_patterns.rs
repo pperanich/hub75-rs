@@ -19,7 +19,7 @@ use embedded_graphics::{
     prelude::*,
     primitives::{Circle, PrimitiveStyleBuilder, Rectangle},
 };
-use hub75_embassy::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
+use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use {defmt_rtt as _, panic_probe as _};

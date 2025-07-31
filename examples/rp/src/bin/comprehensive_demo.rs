@@ -20,7 +20,7 @@ use embedded_graphics::{
     primitives::{Circle, PrimitiveStyleBuilder, Rectangle},
     text::Text,
 };
-use hub75_embassy::{display::Brightness, Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
+use hub75::{display::Brightness, Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_halt as _};
 
 use embassy_rp::gpio::{Level, Output};

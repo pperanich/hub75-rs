@@ -14,21 +14,27 @@ The examples are organized following the pattern used by other Embassy projects:
 These examples work with any Embassy-supported microcontroller by adapting the pin configuration:
 
 ### `basic_usage.rs`
+
 Basic setup and usage patterns for the HUB75 driver. Demonstrates:
+
 - Display initialization
 - Basic shapes and text
 - Double buffering
 - Task spawning
 
 ### `animations.rs`
+
 Various animation effects and patterns. Shows:
+
 - Color cycling
 - Moving patterns
 - Smooth transitions
 - Performance optimization
 
 ### `animations.rs`
+
 Various animation effects and patterns. Shows:
+
 - Color cycling
 - Moving patterns
 - Smooth transitions
@@ -95,6 +101,7 @@ cargo run --release --features pico-w --bin pico_w_demo
 ## Hardware Requirements
 
 All examples assume:
+
 - A HUB75 RGB LED matrix panel (tested with 64x32 and 32x16)
 - Appropriate power supply (5V, sufficient current capacity)
 - Proper wiring between microcontroller and panel
@@ -104,10 +111,10 @@ All examples assume:
 To add examples for a new microcontroller family:
 
 1. Create a new directory (e.g., `stm32/`, `esp32/`)
-2. Add a platform-specific `Cargo.toml` with appropriate dependencies
-3. Create `src/bin/` directory with example binaries
-4. Add `.cargo/config.toml` and memory layout files
-5. Include a comprehensive README with setup instructions
+1. Add a platform-specific `Cargo.toml` with appropriate dependencies
+1. Create `src/bin/` directory with example binaries
+1. Add `.cargo/config.toml` and memory layout files
+1. Include a comprehensive README with setup instructions
 
 Follow the pattern established in the `nrf/` and `rp/` directories for consistency.
 
@@ -126,8 +133,8 @@ Examples demonstrate various driver features:
 Common issues and solutions:
 
 1. **Compilation errors**: Ensure correct target and dependencies
-2. **Display flickering**: Check power supply and refresh rate
-3. **Wrong colors**: Verify RGB pin connections
-4. **Performance issues**: Use release builds and appropriate color depth
+1. **Display flickering**: Check power supply and refresh rate
+1. **Wrong colors**: Verify RGB pin connections
+1. **Performance issues**: Use release builds and appropriate color depth
 
 For platform-specific troubleshooting, see the respective README files.

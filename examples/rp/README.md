@@ -32,21 +32,22 @@ The examples assume the following pin connections for a 64x32 HUB75 panel:
 
 | HUB75 Pin | Pico Pin | GPIO | Description |
 |-----------|----------|------|-------------|
-| R1        | Pin 4    | GP2  | Upper half red data |
-| G1        | Pin 5    | GP3  | Upper half green data |
-| B1        | Pin 6    | GP4  | Upper half blue data |
-| R2        | Pin 7    | GP5  | Lower half red data |
-| G2        | Pin 9    | GP6  | Lower half green data |
-| B2        | Pin 10   | GP7  | Lower half blue data |
-| A         | Pin 11   | GP8  | Row address bit 0 |
-| B         | Pin 12   | GP9  | Row address bit 1 |
-| C         | Pin 14   | GP10 | Row address bit 2 |
-| D         | Pin 15   | GP11 | Row address bit 3 |
-| CLK       | Pin 16   | GP12 | Clock signal |
-| LAT       | Pin 17   | GP13 | Latch signal |
-| OE        | Pin 19   | GP14 | Output enable (active low) |
+| R1 | Pin 4 | GP2 | Upper half red data |
+| G1 | Pin 5 | GP3 | Upper half green data |
+| B1 | Pin 6 | GP4 | Upper half blue data |
+| R2 | Pin 7 | GP5 | Lower half red data |
+| G2 | Pin 9 | GP6 | Lower half green data |
+| B2 | Pin 10 | GP7 | Lower half blue data |
+| A | Pin 11 | GP8 | Row address bit 0 |
+| B | Pin 12 | GP9 | Row address bit 1 |
+| C | Pin 14 | GP10 | Row address bit 2 |
+| D | Pin 15 | GP11 | Row address bit 3 |
+| CLK | Pin 16 | GP12 | Clock signal |
+| LAT | Pin 17 | GP13 | Latch signal |
+| OE | Pin 19 | GP14 | Output enable (active low) |
 
 **Power Connections:**
+
 - HUB75 5V → External 5V power supply (NOT Pico's VBUS)
 - HUB75 GND → Pico GND + Power supply GND
 - Pico can be powered via USB or external 3.3V
@@ -137,9 +138,9 @@ cargo run --release --features pico-w --bin pico_w_demo
 ### RP2040-Specific Optimizations
 
 1. **Dual Core Usage**: The RP2040's second core can be used for display refresh while the main core handles graphics
-2. **PIO Integration**: Future versions may use PIO for hardware-accelerated HUB75 timing
-3. **DMA Support**: Potential for DMA-based data transfer to reduce CPU load
-4. **Clock Configuration**: Optimize system clocks for display timing
+1. **PIO Integration**: Future versions may use PIO for hardware-accelerated HUB75 timing
+1. **DMA Support**: Potential for DMA-based data transfer to reduce CPU load
+1. **Clock Configuration**: Optimize system clocks for display timing
 
 ### Memory Considerations
 
@@ -150,6 +151,7 @@ cargo run --release --features pico-w --bin pico_w_demo
 ### Recommended Settings
 
 For best performance:
+
 - Use `--release` builds
 - Enable appropriate color depth for your needs
 - Consider panel size optimizations
@@ -160,27 +162,31 @@ For best performance:
 ### Compilation Issues
 
 1. **Target not found**: `rustup target add thumbv6m-none-eabi`
-2. **Probe-rs errors**: Ensure probe-rs is installed and device is connected
-3. **Memory errors**: Check memory.x configuration for your specific board
+1. **Probe-rs errors**: Ensure probe-rs is installed and device is connected
+1. **Memory errors**: Check memory.x configuration for your specific board
 
 ### Runtime Issues
 
-1. **Display not working**: 
+1. **Display not working**:
+
    - Verify pin connections
    - Check power supply (5V, adequate current)
    - Ensure proper grounding
 
-2. **Flickering or artifacts**:
+1. **Flickering or artifacts**:
+
    - Increase power supply capacity
    - Check for loose connections
    - Verify clock timing
 
-3. **Performance issues**:
+1. **Performance issues**:
+
    - Use release builds (`--release`)
    - Reduce color depth if needed
    - Monitor with performance_test example
 
-4. **WiFi issues (Pico W)**:
+1. **WiFi issues (Pico W)**:
+
    - Ensure `pico-w` feature is enabled
    - Check WiFi credentials and network
    - Monitor with defmt logs
@@ -205,6 +211,7 @@ cargo run --release --bin basic_display
 ### Third-Party Boards
 
 Most RP2040-based boards should work with pin adjustments:
+
 - **Adafruit Feather RP2040**
 - **SparkFun Pro Micro RP2040**
 - **Arduino Nano RP2040 Connect**
@@ -237,6 +244,7 @@ type Display = Hub75Display<Output<'static>, 128, 32, 6>; // Two 64x32 panels
 ### Integration with Other Peripherals
 
 Examples can be extended to work with:
+
 - **Sensors**: I2C/SPI sensors for data display
 - **Audio**: PWM audio output alongside display
 - **Storage**: SD card or flash storage for images
@@ -245,6 +253,7 @@ Examples can be extended to work with:
 ## Contributing
 
 Feel free to submit additional examples or improvements:
+
 - New visual effects
 - Hardware integrations
 - Performance optimizations

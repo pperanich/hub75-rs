@@ -28,7 +28,7 @@ use embedded_graphics::{
     primitives::{Circle, PrimitiveStyleBuilder, Rectangle},
     text::Text,
 };
-use hub75_embassy::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
+use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_probe as _};
 
 type Display = Hub75Display<Output<'static>, 64, 32, 6>;
@@ -41,6 +41,9 @@ async fn combined_display_task(mut display: Display) {
     display.set_double_buffering(true);
 
     let mut counter = 0u32;
+    
+    // Create a delay provider using embassy-time
+    let mut delay = embassy_time::Delay;
 
     loop {
         // Clear the back buffer
@@ -87,6 +90,11 @@ async fn combined_display_task(mut display: Display) {
 
         // Swap buffers to display the new frame
         display.swap_buffers();
+
+        // Render the frame to the display
+        if let Err(e) = display.render_frame(&mut delay).await {
+            error!("Failed to render frame: {:?}", e);
+        }
 
         counter = counter.wrapping_add(1);
         Timer::after(Duration::from_millis(100)).await;

@@ -25,7 +25,7 @@ rustup target add thumbv7em-none-eabi    # For nRF52832
 We use features to turn on the appropriate configurations for the chip you are flashing to. Currently supported chips are:
 
 - `nrf52832` - 512KB Flash, 64KB RAM
-- `nrf52833` - 512KB Flash, 128KB RAM  
+- `nrf52833` - 512KB Flash, 128KB RAM
 - `nrf52840` - 1MB Flash, 256KB RAM (default)
 
 ## Hardware Connections
@@ -34,19 +34,19 @@ The examples assume the following pin connections for a 64x32 HUB75 panel:
 
 | HUB75 Pin | nRF52 Pin | Description |
 |-----------|-----------|-------------|
-| R1        | P0.02     | Upper half red data |
-| G1        | P0.03     | Upper half green data |
-| B1        | P0.04     | Upper half blue data |
-| R2        | P0.05     | Lower half red data |
-| G2        | P0.06     | Lower half green data |
-| B2        | P0.07     | Lower half blue data |
-| A         | P0.08     | Row address bit 0 |
-| B         | P0.09     | Row address bit 1 |
-| C         | P0.10     | Row address bit 2 |
-| D         | P0.11     | Row address bit 3 |
-| CLK       | P0.12     | Clock signal |
-| LAT       | P0.13     | Latch signal |
-| OE        | P0.14     | Output enable (active low) |
+| R1 | P0.02 | Upper half red data |
+| G1 | P0.03 | Upper half green data |
+| B1 | P0.04 | Upper half blue data |
+| R2 | P0.05 | Lower half red data |
+| G2 | P0.06 | Lower half green data |
+| B2 | P0.07 | Lower half blue data |
+| A | P0.08 | Row address bit 0 |
+| B | P0.09 | Row address bit 1 |
+| C | P0.10 | Row address bit 2 |
+| D | P0.11 | Row address bit 3 |
+| CLK | P0.12 | Clock signal |
+| LAT | P0.13 | Latch signal |
+| OE | P0.14 | Output enable (active low) |
 
 **Note:** You can modify the pin assignments in each example's source code to match your hardware setup.
 
@@ -122,21 +122,21 @@ The build system automatically selects the correct memory layout based on the fe
 ### Compilation Issues
 
 1. **Missing target**: Install the correct target with `rustup target add thumbv7em-none-eabihf`
-2. **Probe-rs not found**: Install with `cargo install probe-rs-tools`
-3. **Memory errors**: Ensure you're using the correct memory layout for your chip
+1. **Probe-rs not found**: Install with `cargo install probe-rs-tools`
+1. **Memory errors**: Ensure you're using the correct memory layout for your chip
 
 ### Runtime Issues
 
 1. **Display not working**: Check pin connections and power supply
-2. **Flickering**: Ensure adequate power supply and proper grounding
-3. **Colors wrong**: Verify RGB pin connections and color bit depth settings
+1. **Flickering**: Ensure adequate power supply and proper grounding
+1. **Colors wrong**: Verify RGB pin connections and color bit depth settings
 
 ### Performance Tips
 
 1. Use `--release` builds for better performance
-2. Enable double buffering for smooth animations
-3. Consider reducing color depth for faster refresh rates
-4. Use const generics to optimize for your specific panel size
+1. Enable double buffering for smooth animations
+1. Consider reducing color depth for faster refresh rates
+1. Use const generics to optimize for your specific panel size
 
 ## Additional Resources
 

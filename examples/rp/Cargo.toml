@@ -1,5 +1,5 @@
 [package]
-name = "hub75-embassy-rp-examples"
+name = "hub75-rp-examples"
 version = "0.1.0"
 edition = "2021"
 resolver = "2"
@@ -26,7 +26,7 @@ embassy-futures = "0.1"
 embassy-sync = { version = "0.7", features = ["defmt"] }
 
 # HUB75 driver
-hub75-embassy = { path = "../..", features = ["embedded-graphics", "defmt"] }
+hub75 = { path = "../..", features = ["embedded-graphics", "defmt"] }
 
 # Graphics
 embedded-graphics = "0.8"
@@ -62,15 +62,15 @@ debug = 2
 default = []
 
 # Panel size presets (matching main crate)
-size-32x16 = ["hub75-embassy/size-32x16"]
-size-64x32 = ["hub75-embassy/size-64x32"]
-size-64x64 = ["hub75-embassy/size-64x64"]
-size-128x64 = ["hub75-embassy/size-128x64"]
+size-32x16 = ["hub75/size-32x16"]
+size-64x32 = ["hub75/size-64x32"]
+size-64x64 = ["hub75/size-64x64"]
+size-128x64 = ["hub75/size-128x64"]
 
 # Color depth options (matching main crate)
-color-4bit = ["hub75-embassy/color-4bit"]
-color-6bit = ["hub75-embassy/color-6bit"]
-color-8bit = ["hub75-embassy/color-8bit"]
+color-4bit = ["hub75/color-4bit"]
+color-6bit = ["hub75/color-6bit"]
+color-8bit = ["hub75/color-8bit"]
 
 # Development board presets
 pico = []

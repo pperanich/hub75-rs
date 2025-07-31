@@ -11,11 +11,50 @@ pub trait ColorConvert<T> {
 }
 
 /// RGB color representation for HUB75 displays
+///
+/// This struct represents a color with configurable bit depth for each channel.
+/// The bit depth is specified as a const generic parameter and determines the
+/// maximum value for each color component.
+///
+/// # Examples
+///
+/// ```rust
+/// use hub75::Hub75Color;
+///
+/// // 4-bit color (16 levels per channel)
+/// let red: Hub75Color<4> = Hub75Color::new(15, 0, 0);
+///
+/// // 6-bit color (64 levels per channel)
+/// let green: Hub75Color<6> = Hub75Color::new(0, 63, 0);
+///
+/// // 8-bit color (256 levels per channel)
+/// let blue: Hub75Color<8> = Hub75Color::new(0, 0, 255);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Hub75Color<const BITS: usize> {
+    /// Red color component (0 to MAX_VALUE)
+    ///
+    /// The maximum value depends on the bit depth:
+    /// - 4-bit: 0-15
+    /// - 6-bit: 0-63  
+    /// - 8-bit: 0-255
     pub r: u8,
+
+    /// Green color component (0 to MAX_VALUE)
+    ///
+    /// The maximum value depends on the bit depth:
+    /// - 4-bit: 0-15
+    /// - 6-bit: 0-63
+    /// - 8-bit: 0-255
     pub g: u8,
+
+    /// Blue color component (0 to MAX_VALUE)
+    ///
+    /// The maximum value depends on the bit depth:
+    /// - 4-bit: 0-15
+    /// - 6-bit: 0-63
+    /// - 8-bit: 0-255
     pub b: u8,
 }
 
