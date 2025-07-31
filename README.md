@@ -270,7 +270,7 @@ This driver works with any platform supported by embassy-rs:
 See the `examples/` directory for complete working examples:
 
 - [`basic_usage.rs`](examples/basic_usage.rs) - Simple graphics with embedded-graphics
-- [`animations.rs`](examples/animations.rs) - Animation effects demonstration  
+- [`animations.rs`](examples/animations.rs) - Animation effects demonstration
 - [`rp2040_example.rs`](examples/rp2040_example.rs) - Complete RP2040 implementation
 
 ## Performance Characteristics
@@ -302,21 +302,25 @@ See the `examples/` directory for complete working examples:
 ### Common Issues
 
 **Display flickers:**
+
 - Increase refresh rate: `display.set_refresh_interval(Duration::from_micros(50))`
 - Reduce color depth to 4-bit
 - Ensure refresh task runs at high priority
 
 **Colors look wrong:**
+
 - Check RGB pin connections (R1/R2, G1/G2, B1/B2)
 - Verify color bit depth matches your needs
 - Try different gamma correction values
 
 **Display shows garbage:**
+
 - Verify address pin connections (A, B, C, D, E)
 - Check that panel size matches configuration
 - Ensure proper ground connections
 
 **Performance issues:**
+
 - Reduce color depth
 - Lower refresh rate
 - Use single buffering
@@ -356,6 +360,7 @@ at your option.
 ## Acknowledgments
 
 This driver was inspired by:
+
 - [hub75-rs](https://github.com/david-sawatzke/hub75-rs) - Original HUB75 driver
 - [hub75-remastered](https://github.com/david-sawatzke/hub75-remastered) - Improved architecture
 - [microbit-bsp](https://github.com/nrf-rs/microbit) - LED matrix patterns

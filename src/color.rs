@@ -73,7 +73,7 @@ impl<const BITS: usize> Hub75Color<BITS> {
         if bit_plane >= BITS {
             return (false, false, false);
         }
-        
+
         let mask = 1 << bit_plane;
         (
             (self.r & mask) != 0,
@@ -174,13 +174,13 @@ mod tests {
     #[test]
     fn test_bit_extraction() {
         let color = Hub75Color::<4>::new(10, 5, 3); // 1010, 0101, 0011 in binary
-        
+
         let (r0, g0, b0) = color.get_bit(0);
         assert_eq!((r0, g0, b0), (false, true, true)); // LSB
-        
+
         let (r1, g1, b1) = color.get_bit(1);
         assert_eq!((r1, g1, b1), (true, false, true));
-        
+
         let (r3, g3, b3) = color.get_bit(3);
         assert_eq!((r3, g3, b3), (true, false, false)); // MSB
     }
@@ -189,7 +189,7 @@ mod tests {
     fn test_rgb8_conversion() {
         let color = Hub75Color::<6>::from_rgb8(255, 128, 64);
         let (r, g, b) = color.to_rgb8();
-        
+
         // Should be close to original values (some precision loss expected)
         assert!(r >= 252); // 63 << 2 = 252
         assert!(g >= 124 && g <= 128); // 32 << 2 = 128

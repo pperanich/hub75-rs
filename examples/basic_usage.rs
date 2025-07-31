@@ -1,5 +1,5 @@
 //! Basic usage example for the HUB75 Embassy driver
-//! 
+//!
 //! This example demonstrates:
 //! - Setting up a HUB75 display
 //! - Drawing basic shapes with embedded-graphics
@@ -38,23 +38,19 @@ async fn display_refresh_task(mut display: Display) {
 async fn graphics_task(mut display: Display) {
     // Enable double buffering for smooth updates
     display.set_double_buffering(true);
-    
+
     let mut counter = 0u32;
-    
+
     loop {
         // Clear the back buffer
         display.clear();
-        
+
         // Draw a rectangle
         Rectangle::new(Point::new(2, 2), Size::new(20, 12))
-            .into_styled(
-                PrimitiveStyleBuilder::new()
-                    .fill_color(Rgb565::RED)
-                    .build(),
-            )
+            .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::RED).build())
             .draw(&mut display)
             .unwrap();
-        
+
         // Draw a circle
         Circle::new(Point::new(35, 5), 10)
             .into_styled(
@@ -65,19 +61,19 @@ async fn graphics_task(mut display: Display) {
             )
             .draw(&mut display)
             .unwrap();
-        
+
         // Draw counter text
         let text_style = MonoTextStyle::new(&FONT_6X10, Rgb565::BLUE);
         let mut text_buffer = heapless::String::<32>::new();
         core::write!(&mut text_buffer, "Count: {}", counter).unwrap();
-        
+
         Text::new(&text_buffer, Point::new(2, 25), text_style)
             .draw(&mut display)
             .unwrap();
-        
+
         // Swap buffers to display the new frame
         display.swap_buffers();
-        
+
         counter += 1;
         Timer::after(Duration::from_millis(100)).await;
     }
@@ -86,7 +82,7 @@ async fn graphics_task(mut display: Display) {
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
-    
+
     // Configure HUB75 pins for a 64x32 display
     let pins = Hub75Pins::new_64x32(
         // RGB pins for upper half (R1, G1, B1)
@@ -107,14 +103,14 @@ async fn main(spawner: Spawner) {
         Output::new(p.PIN_13, Level::Low),
         Output::new(p.PIN_14, Level::High), // OE is active low
     );
-    
+
     // Create the display
     let display = Hub75Display::<_, 64, 32, 6>::new(pins).unwrap();
-    
+
     // Clone display for both tasks (in a real implementation, you'd use embassy-sync)
     // For this example, we'll just run the graphics task
     spawner.spawn(graphics_task(display)).unwrap();
-    
+
     // Keep the main task alive
     loop {
         Timer::after(Duration::from_secs(1)).await;

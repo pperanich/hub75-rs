@@ -23,7 +23,7 @@
 //! use hub75_embassy::{Hub75Display, Hub75Pins};
 //! use embassy_executor::Spawner;
 //! use embedded_graphics::prelude::*;
-//! 
+//!
 //! #[embassy_executor::main]
 //! async fn main(spawner: Spawner) {
 //!     let pins = Hub75Pins::new(/* your pins */);
@@ -34,20 +34,20 @@
 //! }
 //! ```
 
-pub mod display;
-pub mod pins;
-pub mod frame_buffer;
-pub mod color;
 pub mod animation;
+pub mod color;
+pub mod display;
 pub mod error;
+pub mod frame_buffer;
+pub mod pins;
 
 // Re-export main types
-pub use display::Hub75Display;
-pub use pins::{Hub75Pins, Hub75RgbPins, Hub75ControlPins};
-pub use frame_buffer::Hub75FrameBuffer;
-pub use color::Hub75Color;
 pub use animation::{Animation, AnimationEffect, AnimationState};
+pub use color::Hub75Color;
+pub use display::Hub75Display;
 pub use error::Hub75Error;
+pub use frame_buffer::Hub75FrameBuffer;
+pub use pins::{Hub75ControlPins, Hub75Pins, Hub75RgbPins};
 
 // Re-export commonly used types from dependencies
 pub use embassy_time::{Duration, Instant, Timer};
@@ -56,7 +56,7 @@ pub use embedded_hal::digital::OutputPin;
 #[cfg(feature = "embedded-graphics")]
 pub use embedded_graphics_core::{
     draw_target::DrawTarget,
-    geometry::{OriginDimensions, Size, Point},
+    geometry::{OriginDimensions, Point, Size},
     pixelcolor::{Rgb565, RgbColor},
     Pixel,
 };

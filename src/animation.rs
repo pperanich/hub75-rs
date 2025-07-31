@@ -7,7 +7,6 @@ use crate::{
 };
 use embassy_time::{Duration, Instant};
 
-
 /// Animation effects that can be applied
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -44,8 +43,8 @@ pub enum AnimationData<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_
     Text(&'a str),
 }
 
-impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize> 
-    AnimationData<'a, WIDTH, HEIGHT, COLOR_BITS> 
+impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
+    AnimationData<'a, WIDTH, HEIGHT, COLOR_BITS>
 {
     /// Get the number of frames in the animation data
     pub fn frame_count(&self) -> usize {
@@ -57,7 +56,10 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     }
 
     /// Get a specific frame from the animation data
-    pub fn get_frame(&self, index: usize) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+    pub fn get_frame(
+        &self,
+        index: usize,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         match self {
             AnimationData::Frames(frames) => {
                 if index < frames.len() {
@@ -70,7 +72,7 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
                 let frame_size = WIDTH * HEIGHT * 3;
                 let start = index * frame_size;
                 let end = start + frame_size;
-                
+
                 if end <= data.len() {
                     Hub75FrameBuffer::from_rgb_data(&data[start..end])
                 } else {
@@ -94,38 +96,18 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     }
 
     /// Render a character to a frame buffer (simplified implementation)
-    fn render_character_to_frame(&self, frame: &mut Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, char_byte: u8) -> Result<(), Hub75Error> {
+    fn render_character_to_frame(
+        &self,
+        frame: &mut Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
+        char_byte: u8,
+    ) -> Result<(), Hub75Error> {
         // This is a very basic 5x5 font implementation
         // In a real implementation, you'd use a proper font library
         let pattern = match char_byte {
-            b'A' => [
-                0b01110,
-                0b10001,
-                0b10001,
-                0b11111,
-                0b10001,
-            ],
-            b'B' => [
-                0b11110,
-                0b10001,
-                0b11110,
-                0b10001,
-                0b11110,
-            ],
-            b'C' => [
-                0b01111,
-                0b10000,
-                0b10000,
-                0b10000,
-                0b01111,
-            ],
-            _ => [
-                0b11111,
-                0b10001,
-                0b10001,
-                0b10001,
-                0b11111,
-            ], // Default pattern
+            b'A' => [0b01110, 0b10001, 0b10001, 0b11111, 0b10001],
+            b'B' => [0b11110, 0b10001, 0b11110, 0b10001, 0b11110],
+            b'C' => [0b01111, 0b10000, 0b10000, 0b10000, 0b01111],
+            _ => [0b11111, 0b10001, 0b10001, 0b10001, 0b11111], // Default pattern
         };
 
         let color = Hub75Color::white();
@@ -166,8 +148,8 @@ pub struct Animation<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BI
     next_step_time: Instant,
 }
 
-impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize> 
-    Animation<'a, WIDTH, HEIGHT, COLOR_BITS> 
+impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
+    Animation<'a, WIDTH, HEIGHT, COLOR_BITS>
 {
     /// Create a new animation
     pub fn new(
@@ -187,7 +169,8 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
             AnimationEffect::Wipe => frame_count * WIDTH,
         };
 
-        let step_duration = total_duration.checked_div(total_steps as u32)
+        let step_duration = total_duration
+            .checked_div(total_steps as u32)
             .ok_or(AnimationError::TooFast)?;
 
         Ok(Self {
@@ -226,27 +209,23 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     }
 
     /// Generate the current frame based on the effect and current state
-    fn generate_current_frame(&self) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+    fn generate_current_frame(
+        &self,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         match self.effect {
-            AnimationEffect::None => {
-                self.data.get_frame(self.frame_index)
-            }
-            AnimationEffect::Slide => {
-                self.generate_slide_frame()
-            }
-            AnimationEffect::Fade => {
-                self.generate_fade_frame()
-            }
-            AnimationEffect::Wipe => {
-                self.generate_wipe_frame()
-            }
+            AnimationEffect::None => self.data.get_frame(self.frame_index),
+            AnimationEffect::Slide => self.generate_slide_frame(),
+            AnimationEffect::Fade => self.generate_fade_frame(),
+            AnimationEffect::Wipe => self.generate_wipe_frame(),
         }
     }
 
     /// Generate a frame for the slide effect
-    fn generate_slide_frame(&self) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+    fn generate_slide_frame(
+        &self,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         let mut result = Hub75FrameBuffer::new();
-        
+
         // Get current and next frames
         let current_frame = self.data.get_frame(self.frame_index)?;
         let next_frame = if self.frame_index + 1 < self.data.frame_count() {
@@ -260,13 +239,17 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
             for x in 0..WIDTH {
                 let pixel = if x + self.sequence < WIDTH {
                     // Show current frame, shifted left
-                    current_frame.get_pixel(x + self.sequence, y).unwrap_or(Hub75Color::black())
+                    current_frame
+                        .get_pixel(x + self.sequence, y)
+                        .unwrap_or(Hub75Color::black())
                 } else {
                     // Show next frame, coming in from right
                     let next_x = x + self.sequence - WIDTH;
-                    next_frame.get_pixel(next_x, y).unwrap_or(Hub75Color::black())
+                    next_frame
+                        .get_pixel(next_x, y)
+                        .unwrap_or(Hub75Color::black())
                 };
-                
+
                 result.set_pixel(x, y, pixel)?;
             }
         }
@@ -275,10 +258,12 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     }
 
     /// Generate a frame for the fade effect
-    fn generate_fade_frame(&self) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+    fn generate_fade_frame(
+        &self,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         let mut result = Hub75FrameBuffer::new();
         let frame = self.data.get_frame(self.frame_index)?;
-        
+
         // Calculate fade factor (0-15)
         let fade_step = self.sequence;
         let fade_factor = if fade_step < 8 {
@@ -304,10 +289,12 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     }
 
     /// Generate a frame for the wipe effect
-    fn generate_wipe_frame(&self) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+    fn generate_wipe_frame(
+        &self,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         let mut result = Hub75FrameBuffer::new();
         let frame = self.data.get_frame(self.frame_index)?;
-        
+
         // Wipe effect: reveal columns from left to right
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
@@ -325,7 +312,7 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     /// Advance to the next step in the animation
     fn advance_step(&mut self) {
         self.step += 1;
-        
+
         match self.effect {
             AnimationEffect::None => {
                 self.frame_index = self.step;
@@ -378,13 +365,13 @@ mod tests {
             Hub75FrameBuffer::<32, 16, 6>::new(),
             Hub75FrameBuffer::<32, 16, 6>::new(),
         ];
-        
+
         let animation = Animation::new(
             AnimationData::Frames(&frames),
             AnimationEffect::None,
             Duration::from_secs(1),
         );
-        
+
         assert!(animation.is_ok());
         let animation = animation.unwrap();
         assert!(!animation.is_done());
@@ -397,13 +384,13 @@ mod tests {
             Hub75FrameBuffer::<32, 16, 6>::new(),
             Hub75FrameBuffer::<32, 16, 6>::new(),
         ];
-        
+
         let data = AnimationData::Frames(&frames);
         assert_eq!(data.frame_count(), 3);
-        
+
         let text_data = AnimationData::<32, 16, 6>::Text("Hello");
         assert_eq!(text_data.frame_count(), 5);
-        
+
         // RGB data: 32 * 16 * 3 = 1536 bytes per frame
         let rgb_data = vec![0u8; 1536 * 2]; // 2 frames
         let rgb_animation_data = AnimationData::<32, 16, 6>::RgbData(&rgb_data);
@@ -413,20 +400,22 @@ mod tests {
     #[test]
     fn test_animation_effects() {
         let frames = [Hub75FrameBuffer::<32, 16, 6>::new()];
-        
+
         // Test different effects create different step counts
         let none_anim = Animation::new(
             AnimationData::Frames(&frames),
             AnimationEffect::None,
             Duration::from_secs(1),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         let slide_anim = Animation::new(
             AnimationData::Frames(&frames),
             AnimationEffect::Slide,
             Duration::from_secs(1),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert!(slide_anim.total_steps > none_anim.total_steps);
     }
 }

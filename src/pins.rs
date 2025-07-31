@@ -1,7 +1,7 @@
 //! Pin configuration and management for HUB75 displays
 
-use embedded_hal::digital::OutputPin;
 use crate::error::Hub75Error;
+use embedded_hal::digital::OutputPin;
 
 /// Complete pin configuration for a HUB75 display
 pub struct Hub75Pins<P: OutputPin> {
@@ -56,13 +56,30 @@ pub struct Hub75ControlPins<P: OutputPin> {
 impl<P: OutputPin> Hub75Pins<P> {
     /// Create a new pin configuration for a standard HUB75 display
     pub fn new(
-        r1: P, g1: P, b1: P,
-        r2: P, g2: P, b2: P,
-        a: P, b: P, c: P, d: Option<P>, e: Option<P>,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        d: Option<P>,
+        e: Option<P>,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
         Self {
-            rgb: Hub75RgbPins { r1, g1, b1, r2, g2, b2 },
+            rgb: Hub75RgbPins {
+                r1,
+                g1,
+                b1,
+                r2,
+                g2,
+                b2,
+            },
             address: Hub75AddressPins { a, b, c, d, e },
             control: Hub75ControlPins { clk, lat, oe },
         }
@@ -70,32 +87,74 @@ impl<P: OutputPin> Hub75Pins<P> {
 
     /// Create pin configuration for 32x16 display (3 address pins)
     pub fn new_32x16(
-        r1: P, g1: P, b1: P,
-        r2: P, g2: P, b2: P,
-        a: P, b: P, c: P,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
         Self::new(r1, g1, b1, r2, g2, b2, a, b, c, None, None, clk, lat, oe)
     }
 
     /// Create pin configuration for 64x32 display (4 address pins)
     pub fn new_64x32(
-        r1: P, g1: P, b1: P,
-        r2: P, g2: P, b2: P,
-        a: P, b: P, c: P, d: P,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        d: P,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
         Self::new(r1, g1, b1, r2, g2, b2, a, b, c, Some(d), None, clk, lat, oe)
     }
 
     /// Create pin configuration for 64x64 display (5 address pins)
     pub fn new_64x64(
-        r1: P, g1: P, b1: P,
-        r2: P, g2: P, b2: P,
-        a: P, b: P, c: P, d: P, e: P,
-        clk: P, lat: P, oe: P,
+        r1: P,
+        g1: P,
+        b1: P,
+        r2: P,
+        g2: P,
+        b2: P,
+        a: P,
+        b: P,
+        c: P,
+        d: P,
+        e: P,
+        clk: P,
+        lat: P,
+        oe: P,
     ) -> Self {
-        Self::new(r1, g1, b1, r2, g2, b2, a, b, c, Some(d), Some(e), clk, lat, oe)
+        Self::new(
+            r1,
+            g1,
+            b1,
+            r2,
+            g2,
+            b2,
+            a,
+            b,
+            c,
+            Some(d),
+            Some(e),
+            clk,
+            lat,
+            oe,
+        )
     }
 
     /// Initialize all pins to their default states
@@ -120,9 +179,18 @@ impl<P: OutputPin> Hub75Pins<P> {
         }
 
         // Initialize control pins
-        self.control.clk.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.control.lat.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.control.oe.set_high().map_err(|_| Hub75Error::PinError)?; // OE is active low
+        self.control
+            .clk
+            .set_low()
+            .map_err(|_| Hub75Error::PinError)?;
+        self.control
+            .lat
+            .set_low()
+            .map_err(|_| Hub75Error::PinError)?;
+        self.control
+            .oe
+            .set_high()
+            .map_err(|_| Hub75Error::PinError)?; // OE is active low
 
         Ok(())
     }
@@ -147,22 +215,28 @@ impl<P: OutputPin> Hub75Pins<P> {
 
 impl<P: OutputPin> Hub75RgbPins<P> {
     /// Set RGB values for both upper and lower halves
-    pub fn set_rgb(&mut self, 
-                   upper_r: bool, upper_g: bool, upper_b: bool,
-                   lower_r: bool, lower_g: bool, lower_b: bool) -> Result<(), Hub75Error> {
+    pub fn set_rgb(
+        &mut self,
+        upper_r: bool,
+        upper_g: bool,
+        upper_b: bool,
+        lower_r: bool,
+        lower_g: bool,
+        lower_b: bool,
+    ) -> Result<(), Hub75Error> {
         // Set upper half RGB
         if upper_r {
             self.r1.set_high().map_err(|_| Hub75Error::PinError)?;
         } else {
             self.r1.set_low().map_err(|_| Hub75Error::PinError)?;
         }
-        
+
         if upper_g {
             self.g1.set_high().map_err(|_| Hub75Error::PinError)?;
         } else {
             self.g1.set_low().map_err(|_| Hub75Error::PinError)?;
         }
-        
+
         if upper_b {
             self.b1.set_high().map_err(|_| Hub75Error::PinError)?;
         } else {
@@ -175,13 +249,13 @@ impl<P: OutputPin> Hub75RgbPins<P> {
         } else {
             self.r2.set_low().map_err(|_| Hub75Error::PinError)?;
         }
-        
+
         if lower_g {
             self.g2.set_high().map_err(|_| Hub75Error::PinError)?;
         } else {
             self.g2.set_low().map_err(|_| Hub75Error::PinError)?;
         }
-        
+
         if lower_b {
             self.b2.set_high().map_err(|_| Hub75Error::PinError)?;
         } else {

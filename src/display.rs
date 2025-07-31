@@ -1,10 +1,7 @@
 //! Core HUB75 display driver implementation
 
 use crate::{
-    color::Hub75Color,
-    error::Hub75Error,
-    frame_buffer::Hub75FrameBuffer,
-    pins::Hub75Pins,
+    color::Hub75Color, error::Hub75Error, frame_buffer::Hub75FrameBuffer, pins::Hub75Pins,
 };
 use embassy_time::{Duration, Instant, Timer};
 use embedded_hal::digital::OutputPin;
@@ -21,12 +18,12 @@ impl Brightness {
     pub const MAX: Self = Self { level: 255 };
     /// Minimum brightness level
     pub const MIN: Self = Self { level: 0 };
-    
+
     /// Create a new brightness level (0-255)
     pub fn new(level: u8) -> Self {
         Self { level }
     }
-    
+
     /// Get the brightness level
     pub fn level(&self) -> u8 {
         self.level
@@ -41,17 +38,21 @@ impl Default for Brightness {
 
 impl core::ops::Add<u8> for Brightness {
     type Output = Self;
-    
+
     fn add(self, rhs: u8) -> Self::Output {
-        Self { level: self.level.saturating_add(rhs) }
+        Self {
+            level: self.level.saturating_add(rhs),
+        }
     }
 }
 
 impl core::ops::Sub<u8> for Brightness {
     type Output = Self;
-    
+
     fn sub(self, rhs: u8) -> Self::Output {
-        Self { level: self.level.saturating_sub(rhs) }
+        Self {
+            level: self.level.saturating_sub(rhs),
+        }
     }
 }
 
@@ -89,13 +90,13 @@ where
     pub fn new(mut pins: Hub75Pins<P>) -> Result<Self, Hub75Error> {
         // Initialize pins to default state
         pins.init()?;
-        
+
         // Validate display dimensions
         let max_rows = pins.max_addressable_rows();
         if HEIGHT / 2 > max_rows {
             return Err(Hub75Error::InvalidCoordinates);
         }
-        
+
         Ok(Self {
             pins,
             front_buffer: Hub75FrameBuffer::new(),
@@ -158,7 +159,12 @@ where
     }
 
     /// Set a pixel at the specified coordinates
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: Hub75Color<COLOR_BITS>) -> Result<(), Hub75Error> {
+    pub fn set_pixel(
+        &mut self,
+        x: usize,
+        y: usize,
+        color: Hub75Color<COLOR_BITS>,
+    ) -> Result<(), Hub75Error> {
         self.back_buffer().set_pixel(x, y, color)
     }
 
@@ -181,13 +187,17 @@ where
         self.pins.address.set_address(self.current_row)?;
 
         // Get bit plane data for current row
-        let bit_data = self.front_buffer.get_row_bit_plane(self.current_row, self.current_bit_plane)?;
+        let bit_data = self
+            .front_buffer
+            .get_row_bit_plane(self.current_row, self.current_bit_plane)?;
 
         // Shift out RGB data for all columns
         for &(upper_r, upper_g, upper_b, lower_r, lower_g, lower_b) in &bit_data {
             // Set RGB pins
-            self.pins.rgb.set_rgb(upper_r, upper_g, upper_b, lower_r, lower_g, lower_b)?;
-            
+            self.pins
+                .rgb
+                .set_rgb(upper_r, upper_g, upper_b, lower_r, lower_g, lower_b)?;
+
             // Clock pulse to shift data
             self.pins.control.clock_pulse()?;
         }
@@ -207,25 +217,25 @@ where
             for row in 0..(HEIGHT / 2) {
                 self.current_row = row;
                 self.current_bit_plane = bit_plane;
-                
+
                 self.render_bit_plane()?;
-                
+
                 // BCM timing - exponentially longer delays for higher bit planes
                 let bit_duration = self.refresh_interval * (1 << bit_plane);
-                
+
                 // Apply brightness scaling
                 let brightness_factor = self.brightness.level() as u64;
                 let scaled_duration = Duration::from_micros(
-                    (bit_duration.as_micros() * brightness_factor / 255) as u64
+                    (bit_duration.as_micros() * brightness_factor / 255) as u64,
                 );
-                
+
                 Timer::after(scaled_duration).await;
-                
+
                 // Disable output before moving to next row/bit plane
                 self.pins.control.disable_output().ok();
             }
         }
-        
+
         Ok(())
     }
 
@@ -240,7 +250,11 @@ where
     }
 
     /// Display a frame for a specific duration
-    pub async fn display_frame(&mut self, frame: Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, duration: Duration) -> Result<(), Hub75Error> {
+    pub async fn display_frame(
+        &mut self,
+        frame: Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
+        duration: Duration,
+    ) -> Result<(), Hub75Error> {
         // Copy frame to appropriate buffer
         if self.double_buffering {
             self.back_buffer.copy_from(&frame);
@@ -250,11 +264,11 @@ where
         }
 
         let end_time = Instant::now() + duration;
-        
+
         while Instant::now() < end_time {
             self.render_frame().await?;
         }
-        
+
         Ok(())
     }
 
@@ -346,15 +360,24 @@ mod tests {
     #[test]
     fn test_display_creation() {
         let pins = Hub75Pins::new_64x32(
-            MockPin::new(), MockPin::new(), MockPin::new(), // RGB1
-            MockPin::new(), MockPin::new(), MockPin::new(), // RGB2
-            MockPin::new(), MockPin::new(), MockPin::new(), MockPin::new(), // Address
-            MockPin::new(), MockPin::new(), MockPin::new(), // Control
+            MockPin::new(),
+            MockPin::new(),
+            MockPin::new(), // RGB1
+            MockPin::new(),
+            MockPin::new(),
+            MockPin::new(), // RGB2
+            MockPin::new(),
+            MockPin::new(),
+            MockPin::new(),
+            MockPin::new(), // Address
+            MockPin::new(),
+            MockPin::new(),
+            MockPin::new(), // Control
         );
 
         let display = Hub75Display::<_, 64, 32, 6>::new(pins);
         assert!(display.is_ok());
-        
+
         let display = display.unwrap();
         assert_eq!(display.dimensions(), (64, 32));
         assert_eq!(display.color_bits(), 6);
@@ -365,17 +388,17 @@ mod tests {
     fn test_brightness_operations() {
         let mut brightness = Brightness::new(100);
         assert_eq!(brightness.level(), 100);
-        
+
         brightness = brightness + 50;
         assert_eq!(brightness.level(), 150);
-        
+
         brightness = brightness - 25;
         assert_eq!(brightness.level(), 125);
-        
+
         // Test saturation
         brightness = Brightness::new(250) + 20;
         assert_eq!(brightness.level(), 255);
-        
+
         brightness = Brightness::new(10) - 20;
         assert_eq!(brightness.level(), 0);
     }
