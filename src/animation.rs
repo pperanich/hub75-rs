@@ -2,10 +2,25 @@
 
 use crate::{
     color::Hub75Color,
-    error::{AnimationError, Hub75Error},
     frame_buffer::Hub75FrameBuffer,
+    AnimationError, Hub75Error,
 };
 use embassy_time::{Duration, Instant};
+
+/// Trait for animation effects
+pub trait AnimationEffectTrait<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize> {
+    /// Apply the effect to generate a frame
+    fn apply_effect(
+        &self,
+        current_frame: &Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
+        next_frame: Option<&Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>>,
+        progress: usize,
+        total_steps: usize,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error>;
+
+    /// Get the total number of steps for this effect with the given frame count
+    fn total_steps(&self, frame_count: usize) -> usize;
+}
 
 /// Animation effects that can be applied
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +34,102 @@ pub enum AnimationEffect {
     Fade,
     /// Wipe effect - frames are revealed column by column
     Wipe,
+}
+
+impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize> 
+    AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS> for AnimationEffect 
+{
+    fn apply_effect(
+        &self,
+        current_frame: &Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
+        next_frame: Option<&Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>>,
+        progress: usize,
+        _total_steps: usize,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+        match self {
+            AnimationEffect::None => Ok(current_frame.clone()),
+            AnimationEffect::Slide => self.apply_slide_effect(current_frame, next_frame, progress),
+            AnimationEffect::Fade => self.apply_fade_effect(current_frame, progress),
+            AnimationEffect::Wipe => self.apply_wipe_effect(current_frame, progress),
+        }
+    }
+
+    fn total_steps(&self, frame_count: usize) -> usize {
+        match self {
+            AnimationEffect::None => frame_count,
+            AnimationEffect::Slide => frame_count * WIDTH,
+            AnimationEffect::Fade => frame_count * 16,
+            AnimationEffect::Wipe => frame_count * WIDTH,
+        }
+    }
+}
+
+impl AnimationEffect {
+    /// Apply slide effect
+    fn apply_slide_effect<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>(
+        &self,
+        current_frame: &Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
+        next_frame: Option<&Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>>,
+        sequence: usize,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+        let mut result = Hub75FrameBuffer::new();
+        let next = next_frame.cloned().unwrap_or_else(Hub75FrameBuffer::new);
+
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                let pixel = if x + sequence < WIDTH {
+                    current_frame.get_pixel(x + sequence, y).unwrap_or(Hub75Color::black())
+                } else {
+                    let next_x = x + sequence - WIDTH;
+                    next.get_pixel(next_x, y).unwrap_or(Hub75Color::black())
+                };
+                result.set_pixel(x, y, pixel)?;
+            }
+        }
+        Ok(result)
+    }
+
+    /// Apply fade effect
+    fn apply_fade_effect<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>(
+        &self,
+        current_frame: &Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
+        sequence: usize,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+        let mut result = Hub75FrameBuffer::new();
+        let fade_factor = if sequence < 8 { sequence } else { 15 - sequence };
+
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                let original = current_frame.get_pixel(x, y)?;
+                let faded = Hub75Color::new(
+                    (original.r * fade_factor as u8) / 15,
+                    (original.g * fade_factor as u8) / 15,
+                    (original.b * fade_factor as u8) / 15,
+                );
+                result.set_pixel(x, y, faded)?;
+            }
+        }
+        Ok(result)
+    }
+
+    /// Apply wipe effect
+    fn apply_wipe_effect<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>(
+        &self,
+        current_frame: &Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>,
+        sequence: usize,
+    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
+        let mut result = Hub75FrameBuffer::new();
+
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                if x <= sequence {
+                    let pixel = current_frame.get_pixel(x, y)?;
+                    result.set_pixel(x, y, pixel)?;
+                }
+            }
+        }
+        Ok(result)
+    }
 }
 
 /// Current state of an animation
@@ -162,13 +273,7 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
             return Err(AnimationError::InvalidData);
         }
 
-        let total_steps = match effect {
-            AnimationEffect::None => frame_count,
-            AnimationEffect::Slide => frame_count * WIDTH,
-            AnimationEffect::Fade => frame_count * 16, // 16 fade steps per frame
-            AnimationEffect::Wipe => frame_count * WIDTH,
-        };
-
+        let total_steps = <AnimationEffect as AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS>>::total_steps(&effect, frame_count);
         let step_duration = total_duration
             .checked_div(total_steps as u32)
             .ok_or(AnimationError::TooFast)?;
@@ -209,105 +314,18 @@ impl<'a, const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     }
 
     /// Generate the current frame based on the effect and current state
-    fn generate_current_frame(
-        &self,
-    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
-        match self.effect {
-            AnimationEffect::None => self.data.get_frame(self.frame_index),
-            AnimationEffect::Slide => self.generate_slide_frame(),
-            AnimationEffect::Fade => self.generate_fade_frame(),
-            AnimationEffect::Wipe => self.generate_wipe_frame(),
-        }
-    }
-
-    /// Generate a frame for the slide effect
-    fn generate_slide_frame(
-        &self,
-    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
-        let mut result = Hub75FrameBuffer::new();
-
-        // Get current and next frames
+    fn generate_current_frame(&self) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
         let current_frame = self.data.get_frame(self.frame_index)?;
         let next_frame = if self.frame_index + 1 < self.data.frame_count() {
-            self.data.get_frame(self.frame_index + 1)?
+            Some(self.data.get_frame(self.frame_index + 1)?)
         } else {
-            Hub75FrameBuffer::new() // Black frame
+            None
         };
 
-        // Slide effect: current frame slides left, next frame slides in from right
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                let pixel = if x + self.sequence < WIDTH {
-                    // Show current frame, shifted left
-                    current_frame
-                        .get_pixel(x + self.sequence, y)
-                        .unwrap_or(Hub75Color::black())
-                } else {
-                    // Show next frame, coming in from right
-                    let next_x = x + self.sequence - WIDTH;
-                    next_frame
-                        .get_pixel(next_x, y)
-                        .unwrap_or(Hub75Color::black())
-                };
-
-                result.set_pixel(x, y, pixel)?;
-            }
-        }
-
-        Ok(result)
+        <AnimationEffect as AnimationEffectTrait<WIDTH, HEIGHT, COLOR_BITS>>::apply_effect(&self.effect, &current_frame, next_frame.as_ref(), self.sequence, self.total_steps)
     }
 
-    /// Generate a frame for the fade effect
-    fn generate_fade_frame(
-        &self,
-    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
-        let mut result = Hub75FrameBuffer::new();
-        let frame = self.data.get_frame(self.frame_index)?;
 
-        // Calculate fade factor (0-15)
-        let fade_step = self.sequence;
-        let fade_factor = if fade_step < 8 {
-            fade_step // Fade in
-        } else {
-            15 - fade_step // Fade out
-        };
-
-        // Apply fade to each pixel
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                let original = frame.get_pixel(x, y)?;
-                let faded = Hub75Color::new(
-                    (original.r * fade_factor as u8) / 15,
-                    (original.g * fade_factor as u8) / 15,
-                    (original.b * fade_factor as u8) / 15,
-                );
-                result.set_pixel(x, y, faded)?;
-            }
-        }
-
-        Ok(result)
-    }
-
-    /// Generate a frame for the wipe effect
-    fn generate_wipe_frame(
-        &self,
-    ) -> Result<Hub75FrameBuffer<WIDTH, HEIGHT, COLOR_BITS>, Hub75Error> {
-        let mut result = Hub75FrameBuffer::new();
-        let frame = self.data.get_frame(self.frame_index)?;
-
-        // Wipe effect: reveal columns from left to right
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                if x <= self.sequence {
-                    let pixel = frame.get_pixel(x, y)?;
-                    result.set_pixel(x, y, pixel)?;
-                }
-                // Pixels beyond the wipe position remain black (default)
-            }
-        }
-
-        Ok(result)
-    }
 
     /// Advance to the next step in the animation
     fn advance_step(&mut self) {

@@ -1,6 +1,6 @@
 //! Pin configuration and management for HUB75 displays
 
-use crate::error::Hub75Error;
+use crate::{pin_op, Hub75Error};
 use embedded_hal::digital::OutputPin;
 
 /// Complete pin configuration for a HUB75 display
@@ -53,33 +53,31 @@ pub struct Hub75ControlPins<P: OutputPin> {
     pub oe: P,
 }
 
+/// Builder for constructing Hub75Pins with a fluent interface
+pub struct Hub75PinsBuilder<P: OutputPin> {
+    rgb: Option<(P, P, P, P, P, P)>,
+    address: Option<(P, P, P, Option<P>, Option<P>)>,
+    control: Option<(P, P, P)>,
+}
+
 impl<P: OutputPin> Hub75Pins<P> {
+    /// Create a builder for constructing pin configuration
+    pub fn builder() -> Hub75PinsBuilder<P> {
+        Hub75PinsBuilder {
+            rgb: None,
+            address: None,
+            control: None,
+        }
+    }
+
     /// Create a new pin configuration for a standard HUB75 display
     pub fn new(
-        r1: P,
-        g1: P,
-        b1: P,
-        r2: P,
-        g2: P,
-        b2: P,
-        a: P,
-        b: P,
-        c: P,
-        d: Option<P>,
-        e: Option<P>,
-        clk: P,
-        lat: P,
-        oe: P,
+        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
+        a: P, b: P, c: P, d: Option<P>, e: Option<P>,
+        clk: P, lat: P, oe: P,
     ) -> Self {
         Self {
-            rgb: Hub75RgbPins {
-                r1,
-                g1,
-                b1,
-                r2,
-                g2,
-                b2,
-            },
+            rgb: Hub75RgbPins { r1, g1, b1, r2, g2, b2 },
             address: Hub75AddressPins { a, b, c, d, e },
             control: Hub75ControlPins { clk, lat, oe },
         }
@@ -87,110 +85,56 @@ impl<P: OutputPin> Hub75Pins<P> {
 
     /// Create pin configuration for 32x16 display (3 address pins)
     pub fn new_32x16(
-        r1: P,
-        g1: P,
-        b1: P,
-        r2: P,
-        g2: P,
-        b2: P,
-        a: P,
-        b: P,
-        c: P,
-        clk: P,
-        lat: P,
-        oe: P,
+        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
+        a: P, b: P, c: P,
+        clk: P, lat: P, oe: P,
     ) -> Self {
         Self::new(r1, g1, b1, r2, g2, b2, a, b, c, None, None, clk, lat, oe)
     }
 
     /// Create pin configuration for 64x32 display (4 address pins)
     pub fn new_64x32(
-        r1: P,
-        g1: P,
-        b1: P,
-        r2: P,
-        g2: P,
-        b2: P,
-        a: P,
-        b: P,
-        c: P,
-        d: P,
-        clk: P,
-        lat: P,
-        oe: P,
+        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
+        a: P, b: P, c: P, d: P,
+        clk: P, lat: P, oe: P,
     ) -> Self {
         Self::new(r1, g1, b1, r2, g2, b2, a, b, c, Some(d), None, clk, lat, oe)
     }
 
     /// Create pin configuration for 64x64 display (5 address pins)
     pub fn new_64x64(
-        r1: P,
-        g1: P,
-        b1: P,
-        r2: P,
-        g2: P,
-        b2: P,
-        a: P,
-        b: P,
-        c: P,
-        d: P,
-        e: P,
-        clk: P,
-        lat: P,
-        oe: P,
+        r1: P, g1: P, b1: P, r2: P, g2: P, b2: P,
+        a: P, b: P, c: P, d: P, e: P,
+        clk: P, lat: P, oe: P,
     ) -> Self {
-        Self::new(
-            r1,
-            g1,
-            b1,
-            r2,
-            g2,
-            b2,
-            a,
-            b,
-            c,
-            Some(d),
-            Some(e),
-            clk,
-            lat,
-            oe,
-        )
+        Self::new(r1, g1, b1, r2, g2, b2, a, b, c, Some(d), Some(e), clk, lat, oe)
     }
 
     /// Initialize all pins to their default states
     pub fn init(&mut self) -> Result<(), Hub75Error> {
         // Initialize RGB pins to low
-        self.rgb.r1.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.rgb.g1.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.rgb.b1.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.rgb.r2.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.rgb.g2.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.rgb.b2.set_low().map_err(|_| Hub75Error::PinError)?;
+        pin_op!(self.rgb.r1.set_low());
+        pin_op!(self.rgb.g1.set_low());
+        pin_op!(self.rgb.b1.set_low());
+        pin_op!(self.rgb.r2.set_low());
+        pin_op!(self.rgb.g2.set_low());
+        pin_op!(self.rgb.b2.set_low());
 
         // Initialize address pins to low
-        self.address.a.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.address.b.set_low().map_err(|_| Hub75Error::PinError)?;
-        self.address.c.set_low().map_err(|_| Hub75Error::PinError)?;
+        pin_op!(self.address.a.set_low());
+        pin_op!(self.address.b.set_low());
+        pin_op!(self.address.c.set_low());
         if let Some(ref mut d) = self.address.d {
-            d.set_low().map_err(|_| Hub75Error::PinError)?;
+            pin_op!(d.set_low());
         }
         if let Some(ref mut e) = self.address.e {
-            e.set_low().map_err(|_| Hub75Error::PinError)?;
+            pin_op!(e.set_low());
         }
 
         // Initialize control pins
-        self.control
-            .clk
-            .set_low()
-            .map_err(|_| Hub75Error::PinError)?;
-        self.control
-            .lat
-            .set_low()
-            .map_err(|_| Hub75Error::PinError)?;
-        self.control
-            .oe
-            .set_high()
-            .map_err(|_| Hub75Error::PinError)?; // OE is active low
+        pin_op!(self.control.clk.set_low());
+        pin_op!(self.control.lat.set_low());
+        pin_op!(self.control.oe.set_high()); // OE is active low
 
         Ok(())
     }
@@ -213,54 +157,74 @@ impl<P: OutputPin> Hub75Pins<P> {
     }
 }
 
+impl<P: OutputPin> Hub75PinsBuilder<P> {
+    /// Set RGB pins for upper and lower halves
+    pub fn rgb(mut self, r1: P, g1: P, b1: P, r2: P, g2: P, b2: P) -> Self {
+        self.rgb = Some((r1, g1, b1, r2, g2, b2));
+        self
+    }
+
+    /// Set address pins (A, B, C are required)
+    pub fn address(mut self, a: P, b: P, c: P) -> Self {
+        self.address = Some((a, b, c, None, None));
+        self
+    }
+
+    /// Set address pins with optional D and E pins
+    pub fn address_with_optional(mut self, a: P, b: P, c: P, d: Option<P>, e: Option<P>) -> Self {
+        self.address = Some((a, b, c, d, e));
+        self
+    }
+
+    /// Set control pins
+    pub fn control(mut self, clk: P, lat: P, oe: P) -> Self {
+        self.control = Some((clk, lat, oe));
+        self
+    }
+
+    /// Build the Hub75Pins configuration
+    pub fn build(self) -> Result<Hub75Pins<P>, Hub75Error> {
+        let rgb = self.rgb.ok_or(Hub75Error::InvalidCoordinates)?;
+        let address = self.address.ok_or(Hub75Error::InvalidCoordinates)?;
+        let control = self.control.ok_or(Hub75Error::InvalidCoordinates)?;
+
+        Ok(Hub75Pins {
+            rgb: Hub75RgbPins {
+                r1: rgb.0, g1: rgb.1, b1: rgb.2,
+                r2: rgb.3, g2: rgb.4, b2: rgb.5,
+            },
+            address: Hub75AddressPins {
+                a: address.0, b: address.1, c: address.2,
+                d: address.3, e: address.4,
+            },
+            control: Hub75ControlPins {
+                clk: control.0, lat: control.1, oe: control.2,
+            },
+        })
+    }
+}
+
 impl<P: OutputPin> Hub75RgbPins<P> {
     /// Set RGB values for both upper and lower halves
     pub fn set_rgb(
         &mut self,
-        upper_r: bool,
-        upper_g: bool,
-        upper_b: bool,
-        lower_r: bool,
-        lower_g: bool,
-        lower_b: bool,
+        upper_r: bool, upper_g: bool, upper_b: bool,
+        lower_r: bool, lower_g: bool, lower_b: bool,
     ) -> Result<(), Hub75Error> {
-        // Set upper half RGB
-        if upper_r {
-            self.r1.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.r1.set_low().map_err(|_| Hub75Error::PinError)?;
+        // Helper macro to set pin state
+        macro_rules! set_pin {
+            ($pin:expr, $state:expr) => {
+                if $state { pin_op!($pin.set_high()) } else { pin_op!($pin.set_low()) }
+            };
         }
 
-        if upper_g {
-            self.g1.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.g1.set_low().map_err(|_| Hub75Error::PinError)?;
-        }
-
-        if upper_b {
-            self.b1.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.b1.set_low().map_err(|_| Hub75Error::PinError)?;
-        }
-
-        // Set lower half RGB
-        if lower_r {
-            self.r2.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.r2.set_low().map_err(|_| Hub75Error::PinError)?;
-        }
-
-        if lower_g {
-            self.g2.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.g2.set_low().map_err(|_| Hub75Error::PinError)?;
-        }
-
-        if lower_b {
-            self.b2.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.b2.set_low().map_err(|_| Hub75Error::PinError)?;
-        }
+        // Set all pins in one go
+        set_pin!(self.r1, upper_r);
+        set_pin!(self.g1, upper_g);
+        set_pin!(self.b1, upper_b);
+        set_pin!(self.r2, lower_r);
+        set_pin!(self.g2, lower_g);
+        set_pin!(self.b2, lower_b);
 
         Ok(())
     }
@@ -274,43 +238,24 @@ impl<P: OutputPin> Hub75RgbPins<P> {
 impl<P: OutputPin> Hub75AddressPins<P> {
     /// Set the address pins to select a specific row
     pub fn set_address(&mut self, row: usize) -> Result<(), Hub75Error> {
-        // Set pin A (bit 0)
-        if (row & 0x01) != 0 {
-            self.a.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.a.set_low().map_err(|_| Hub75Error::PinError)?;
+        // Helper macro to set address pin based on bit
+        macro_rules! set_addr_pin {
+            ($pin:expr, $bit:expr) => {
+                if (row & (1 << $bit)) != 0 { pin_op!($pin.set_high()) } else { pin_op!($pin.set_low()) }
+            };
         }
 
-        // Set pin B (bit 1)
-        if (row & 0x02) != 0 {
-            self.b.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.b.set_low().map_err(|_| Hub75Error::PinError)?;
-        }
+        // Set required address pins
+        set_addr_pin!(self.a, 0);
+        set_addr_pin!(self.b, 1);
+        set_addr_pin!(self.c, 2);
 
-        // Set pin C (bit 2)
-        if (row & 0x04) != 0 {
-            self.c.set_high().map_err(|_| Hub75Error::PinError)?;
-        } else {
-            self.c.set_low().map_err(|_| Hub75Error::PinError)?;
-        }
-
-        // Set pin D (bit 3) if available
+        // Set optional address pins
         if let Some(ref mut d) = self.d {
-            if (row & 0x08) != 0 {
-                d.set_high().map_err(|_| Hub75Error::PinError)?;
-            } else {
-                d.set_low().map_err(|_| Hub75Error::PinError)?;
-            }
+            set_addr_pin!(d, 3);
         }
-
-        // Set pin E (bit 4) if available
         if let Some(ref mut e) = self.e {
-            if (row & 0x10) != 0 {
-                e.set_high().map_err(|_| Hub75Error::PinError)?;
-            } else {
-                e.set_low().map_err(|_| Hub75Error::PinError)?;
-            }
+            set_addr_pin!(e, 4);
         }
 
         Ok(())
@@ -320,25 +265,27 @@ impl<P: OutputPin> Hub75AddressPins<P> {
 impl<P: OutputPin> Hub75ControlPins<P> {
     /// Generate a clock pulse
     pub fn clock_pulse(&mut self) -> Result<(), Hub75Error> {
-        self.clk.set_high().map_err(|_| Hub75Error::PinError)?;
-        self.clk.set_low().map_err(|_| Hub75Error::PinError)?;
+        pin_op!(self.clk.set_high());
+        pin_op!(self.clk.set_low());
         Ok(())
     }
 
     /// Generate a latch pulse
     pub fn latch_pulse(&mut self) -> Result<(), Hub75Error> {
-        self.lat.set_high().map_err(|_| Hub75Error::PinError)?;
-        self.lat.set_low().map_err(|_| Hub75Error::PinError)?;
+        pin_op!(self.lat.set_high());
+        pin_op!(self.lat.set_low());
         Ok(())
     }
 
     /// Enable output (set OE low)
     pub fn enable_output(&mut self) -> Result<(), Hub75Error> {
-        self.oe.set_low().map_err(|_| Hub75Error::PinError)
+        pin_op!(self.oe.set_low());
+        Ok(())
     }
 
     /// Disable output (set OE high)
     pub fn disable_output(&mut self) -> Result<(), Hub75Error> {
-        self.oe.set_high().map_err(|_| Hub75Error::PinError)
+        pin_op!(self.oe.set_high());
+        Ok(())
     }
 }

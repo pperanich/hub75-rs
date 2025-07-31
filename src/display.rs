@@ -1,7 +1,7 @@
 //! Core HUB75 display driver implementation
 
 use crate::{
-    color::Hub75Color, error::Hub75Error, frame_buffer::Hub75FrameBuffer, pins::Hub75Pins,
+    color::Hub75Color, frame_buffer::Hub75FrameBuffer, pins::Hub75Pins, Hub75Error,
 };
 use embassy_time::{Duration, Instant, Timer};
 use embedded_hal::digital::OutputPin;

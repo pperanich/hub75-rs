@@ -2,6 +2,14 @@
 
 use core::fmt;
 
+/// Trait for converting between color formats
+pub trait ColorConvert<T> {
+    /// Convert from another color format
+    fn from_color(color: T) -> Self;
+    /// Convert to another color format
+    fn to_color(self) -> T;
+}
+
 /// RGB color representation for HUB75 displays
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -12,14 +20,16 @@ pub struct Hub75Color<const BITS: usize> {
 }
 
 impl<const BITS: usize> Hub75Color<BITS> {
+    /// Maximum value for this bit depth (computed at compile time)
+    pub const MAX_VALUE: u8 = (1 << BITS) - 1;
+
     /// Create a new color with the specified RGB values
     /// Values are automatically clamped to the bit depth
-    pub fn new(r: u8, g: u8, b: u8) -> Self {
-        let max_value = (1 << BITS) - 1;
+    pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self {
-            r: r.min(max_value),
-            g: g.min(max_value),
-            b: b.min(max_value),
+            r: if r > Self::MAX_VALUE { Self::MAX_VALUE } else { r },
+            g: if g > Self::MAX_VALUE { Self::MAX_VALUE } else { g },
+            b: if b > Self::MAX_VALUE { Self::MAX_VALUE } else { b },
         }
     }
 
@@ -30,42 +40,22 @@ impl<const BITS: usize> Hub75Color<BITS> {
 
     /// Create a white color (all components at maximum)
     pub const fn white() -> Self {
-        let max_value = (1 << BITS) - 1;
-        Self {
-            r: max_value,
-            g: max_value,
-            b: max_value,
-        }
+        Self { r: Self::MAX_VALUE, g: Self::MAX_VALUE, b: Self::MAX_VALUE }
     }
 
     /// Create a red color
     pub const fn red() -> Self {
-        let max_value = (1 << BITS) - 1;
-        Self {
-            r: max_value,
-            g: 0,
-            b: 0,
-        }
+        Self { r: Self::MAX_VALUE, g: 0, b: 0 }
     }
 
     /// Create a green color
     pub const fn green() -> Self {
-        let max_value = (1 << BITS) - 1;
-        Self {
-            r: 0,
-            g: max_value,
-            b: 0,
-        }
+        Self { r: 0, g: Self::MAX_VALUE, b: 0 }
     }
 
     /// Create a blue color
     pub const fn blue() -> Self {
-        let max_value = (1 << BITS) - 1;
-        Self {
-            r: 0,
-            g: 0,
-            b: max_value,
-        }
+        Self { r: 0, g: 0, b: Self::MAX_VALUE }
     }
 
     /// Get the bit value for a specific bit plane
@@ -83,7 +73,7 @@ impl<const BITS: usize> Hub75Color<BITS> {
     }
 
     /// Convert from 8-bit RGB values, scaling to the target bit depth
-    pub fn from_rgb8(r: u8, g: u8, b: u8) -> Self {
+    pub const fn from_rgb8(r: u8, g: u8, b: u8) -> Self {
         if BITS >= 8 {
             Self::new(r, g, b)
         } else {
@@ -93,7 +83,7 @@ impl<const BITS: usize> Hub75Color<BITS> {
     }
 
     /// Convert to 8-bit RGB values, scaling from the current bit depth
-    pub fn to_rgb8(&self) -> (u8, u8, u8) {
+    pub const fn to_rgb8(&self) -> (u8, u8, u8) {
         if BITS >= 8 {
             (self.r, self.g, self.b)
         } else {
@@ -120,33 +110,54 @@ mod embedded_graphics_support {
     use super::*;
     use embedded_graphics_core::pixelcolor::{Rgb565, Rgb888, RgbColor};
 
-    impl<const BITS: usize> From<Rgb565> for Hub75Color<BITS> {
-        fn from(color: Rgb565) -> Self {
+    impl<const BITS: usize> ColorConvert<Rgb565> for Hub75Color<BITS> {
+        fn from_color(color: Rgb565) -> Self {
             Self::from_rgb8(
                 (color.r() as u16 * 255 / 31) as u8,
                 (color.g() as u16 * 255 / 63) as u8,
                 (color.b() as u16 * 255 / 31) as u8,
             )
         }
+
+        fn to_color(self) -> Rgb565 {
+            let (r, g, b) = self.to_rgb8();
+            Rgb565::new(r >> 3, g >> 2, b >> 3)
+        }
+    }
+
+    impl<const BITS: usize> ColorConvert<Rgb888> for Hub75Color<BITS> {
+        fn from_color(color: Rgb888) -> Self {
+            Self::from_rgb8(color.r(), color.g(), color.b())
+        }
+
+        fn to_color(self) -> Rgb888 {
+            let (r, g, b) = self.to_rgb8();
+            Rgb888::new(r, g, b)
+        }
+    }
+
+    // Keep From/Into for backward compatibility
+    impl<const BITS: usize> From<Rgb565> for Hub75Color<BITS> {
+        fn from(color: Rgb565) -> Self {
+            Self::from_color(color)
+        }
     }
 
     impl<const BITS: usize> From<Rgb888> for Hub75Color<BITS> {
         fn from(color: Rgb888) -> Self {
-            Self::from_rgb8(color.r(), color.g(), color.b())
+            Self::from_color(color)
         }
     }
 
     impl<const BITS: usize> From<Hub75Color<BITS>> for Rgb565 {
         fn from(color: Hub75Color<BITS>) -> Self {
-            let (r, g, b) = color.to_rgb8();
-            Rgb565::new(r >> 3, g >> 2, b >> 3)
+            color.to_color()
         }
     }
 
     impl<const BITS: usize> From<Hub75Color<BITS>> for Rgb888 {
         fn from(color: Hub75Color<BITS>) -> Self {
-            let (r, g, b) = color.to_rgb8();
-            Rgb888::new(r, g, b)
+            color.to_color()
         }
     }
 }

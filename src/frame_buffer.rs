@@ -1,7 +1,6 @@
 //! Frame buffer management for HUB75 displays
 
-use crate::color::Hub75Color;
-use crate::error::Hub75Error;
+use crate::{color::Hub75Color, Hub75Error};
 use heapless::Vec;
 
 /// Frame buffer for storing pixel data
@@ -35,34 +34,44 @@ impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
         }
     }
 
-    /// Set a pixel at the specified coordinates
-    pub fn set_pixel(
-        &mut self,
-        x: usize,
-        y: usize,
-        color: Hub75Color<COLOR_BITS>,
-    ) -> Result<(), Hub75Error> {
+    /// Get a mutable reference to a pixel at the specified coordinates
+    #[inline(always)]
+    pub fn pixel_mut(&mut self, x: usize, y: usize) -> Result<&mut Hub75Color<COLOR_BITS>, Hub75Error> {
         if x >= WIDTH || y >= HEIGHT {
-            return Err(Hub75Error::InvalidCoordinates);
+            Err(Hub75Error::InvalidCoordinates)
+        } else {
+            Ok(unsafe { self.pixels.get_unchecked_mut(y).get_unchecked_mut(x) })
         }
+    }
 
-        self.pixels[y][x] = color;
+    /// Get a reference to a pixel at the specified coordinates
+    #[inline(always)]
+    pub fn pixel(&self, x: usize, y: usize) -> Result<&Hub75Color<COLOR_BITS>, Hub75Error> {
+        if x >= WIDTH || y >= HEIGHT {
+            Err(Hub75Error::InvalidCoordinates)
+        } else {
+            Ok(unsafe { self.pixels.get_unchecked(y).get_unchecked(x) })
+        }
+    }
+
+    /// Set a pixel at the specified coordinates
+    #[inline(always)]
+    pub fn set_pixel(&mut self, x: usize, y: usize, color: Hub75Color<COLOR_BITS>) -> Result<(), Hub75Error> {
+        *self.pixel_mut(x, y)? = color;
         Ok(())
     }
 
     /// Get a pixel at the specified coordinates
+    #[inline(always)]
     pub fn get_pixel(&self, x: usize, y: usize) -> Result<Hub75Color<COLOR_BITS>, Hub75Error> {
-        if x >= WIDTH || y >= HEIGHT {
-            return Err(Hub75Error::InvalidCoordinates);
-        }
-
-        Ok(self.pixels[y][x])
+        Ok(*self.pixel(x, y)?)
     }
 
     /// Get a pixel at the specified coordinates without bounds checking
     ///
     /// # Safety
     /// The caller must ensure that x < WIDTH and y < HEIGHT
+    #[inline(always)]
     pub unsafe fn get_pixel_unchecked(&self, x: usize, y: usize) -> Hub75Color<COLOR_BITS> {
         *self.pixels.get_unchecked(y).get_unchecked(x)
     }
@@ -71,12 +80,8 @@ impl<const WIDTH: usize, const HEIGHT: usize, const COLOR_BITS: usize>
     ///
     /// # Safety
     /// The caller must ensure that x < WIDTH and y < HEIGHT
-    pub unsafe fn set_pixel_unchecked(
-        &mut self,
-        x: usize,
-        y: usize,
-        color: Hub75Color<COLOR_BITS>,
-    ) {
+    #[inline(always)]
+    pub unsafe fn set_pixel_unchecked(&mut self, x: usize, y: usize, color: Hub75Color<COLOR_BITS>) {
         *self.pixels.get_unchecked_mut(y).get_unchecked_mut(x) = color;
     }
 
