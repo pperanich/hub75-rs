@@ -90,7 +90,7 @@ pub use animation::{Animation, AnimationEffect, AnimationState};
 pub use color::Hub75Color;
 pub use display::Hub75Display;
 pub use frame_buffer::Hub75FrameBuffer;
-pub use pins::{Hub75ControlPins, Hub75Pins, Hub75RgbPins};
+pub use pins::{Hub75AddressPins, Hub75ControlPins, Hub75Pins, Hub75RgbPins};
 
 // Re-export commonly used types from dependencies
 pub use embassy_time::{Duration, Instant, Timer};

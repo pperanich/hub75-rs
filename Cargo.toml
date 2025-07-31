@@ -16,8 +16,8 @@ embedded-hal-async = "1.0"
 nb = "1.1"
 
 # Embassy dependencies
-embassy-time = "0.3"
-embassy-sync = "0.6"
+embassy-time = "0.4"
+embassy-sync = "0.7"
 
 # Graphics support
 embedded-graphics-core = "0.4"
@@ -27,7 +27,7 @@ heapless = "0.8"
 
 # Optional dependencies for features
 embedded-graphics = { version = "0.8", optional = true }
-defmt = { version = "0.3", optional = true }
+defmt = { version = "1.0", optional = true }
 
 [features]
 default = ["embedded-graphics"]
@@ -49,25 +49,8 @@ size-64x32 = []
 size-64x64 = []
 size-128x64 = []
 
-[dev-dependencies]
-# For examples and tests
-embassy-executor = "0.6"
-embassy-rp = "0.2"
-cortex-m = "0.7"
-cortex-m-rt = "0.7"
-
-[[example]]
-name = "basic_usage"
-required-features = ["embedded-graphics"]
-
-[[example]]
-name = "animations"
-required-features = ["embedded-graphics"]
-
-[[example]]
-name = "rp2040_example"
-required-features = ["embedded-graphics"]
 
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
