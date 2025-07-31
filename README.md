@@ -101,16 +101,16 @@ type CustomDisplay = Hub75Display<YourPinType, WIDTH, HEIGHT, COLOR_BITS>;
 
 ### Standard HUB75 Pinout
 
-| Pin | Description | Required |
+| Pin        | Description                    | Required |
 | ---------- | ------------------------------ | -------- |
-| R1, G1, B1 | Upper half RGB data | Yes |
-| R2, G2, B2 | Lower half RGB data | Yes |
-| A, B, C | Address pins (3 bits = 8 rows) | Yes |
-| D | Address pin (4 bits = 16 rows) | 64x32+ |
-| E | Address pin (5 bits = 32 rows) | 64x64+ |
-| CLK | Clock signal | Yes |
-| LAT | Latch signal | Yes |
-| OE | Output Enable (active low) | Yes |
+| R1, G1, B1 | Upper half RGB data            | Yes      |
+| R2, G2, B2 | Lower half RGB data            | Yes      |
+| A, B, C    | Address pins (3 bits = 8 rows) | Yes      |
+| D          | Address pin (4 bits = 16 rows) | 64x32+   |
+| E          | Address pin (5 bits = 32 rows) | 64x64+   |
+| CLK        | Clock signal                   | Yes      |
+| LAT        | Latch signal                   | Yes      |
+| OE         | Output Enable (active low)     | Yes      |
 
 ### Pin Configuration Examples
 
@@ -410,18 +410,6 @@ cargo run --bin basic_display
 
 ## Performance Characteristics
 
-### Refresh Rates
-
-| Panel Size | Color Depth | Typical Refresh Rate | CPU Usage |
-| ---------- | ----------- | -------------------- | --------- |
-| 32x16 | 4-bit | 1000+ Hz | Low |
-| 32x16 | 6-bit | 400+ Hz | Medium |
-| 64x32 | 4-bit | 500+ Hz | Medium |
-| 64x32 | 6-bit | 200+ Hz | High |
-| 64x64 | 4-bit | 250+ Hz | High |
-
-_Actual performance depends on MCU speed and other system load_
-
 ### Performance Optimization Tips
 
 Based on insights from [hub75-rs](https://github.com/david-sawatzke/hub75-rs):
@@ -450,9 +438,9 @@ Based on insights from [hub75-rs](https://github.com/david-sawatzke/hub75-rs):
 
 | Panel Size | Color Depth | Frame Buffer Size |
 | ---------- | ----------- | ----------------- |
-| 32x16 | 6-bit | ~1.5 KB |
-| 64x32 | 6-bit | ~6 KB |
-| 64x64 | 6-bit | ~24 KB |
+| 32x16      | 6-bit       | ~1.5 KB           |
+| 64x32      | 6-bit       | ~6 KB             |
+| 64x64      | 6-bit       | ~24 KB            |
 
 _Double buffering doubles memory usage_
 
