@@ -287,6 +287,27 @@ See the `examples/` directory for complete working examples:
 
 *Actual performance depends on MCU speed and other system load*
 
+### Performance Optimization Tips
+
+Based on insights from [hub75-rs](https://github.com/david-sawatzke/hub75-rs):
+
+**For Higher Color Depth (6-8 bits):**
+- Use faster MCUs (>100MHz recommended for 8-bit color)
+- Implement hardware timer-controlled OE timing
+- Consider DMA-based data output (platform-specific)
+- Pre-render frame data when possible
+
+**For Higher Refresh Rates:**
+- Reduce color depth (4-bit allows >1kHz refresh)
+- Use single buffering to reduce memory bandwidth
+- Optimize the refresh task priority
+- Consider using dedicated hardware peripherals (PIO, I2S, etc.)
+
+**Memory vs Performance Trade-offs:**
+- **Single buffering**: Lower memory, potential tearing
+- **Double buffering**: Smooth updates, 2x memory usage
+- **Pre-rendered buffers**: Highest performance, highest memory usage
+
 ### Memory Usage
 
 | Panel Size | Color Depth | Frame Buffer Size |
@@ -302,29 +323,39 @@ See the `examples/` directory for complete working examples:
 ### Common Issues
 
 **Display flickers:**
-
 - Increase refresh rate: `display.set_refresh_interval(Duration::from_micros(50))`
 - Reduce color depth to 4-bit
 - Ensure refresh task runs at high priority
+- Call the refresh method more frequently
+- Use a faster microcontroller
 
-**Colors look wrong:**
-
+**Colors look wrong or missing:**
 - Check RGB pin connections (R1/R2, G1/G2, B1/B2)
 - Verify color bit depth matches your needs
+- **Low brightness colors may not display**: With 3 color bits, values less than 124 
+  (after gamma correction ~31) won't show as they're below the 1<<5 threshold
 - Try different gamma correction values
+- Increase overall brightness to make dim colors visible
 
 **Display shows garbage:**
-
 - Verify address pin connections (A, B, C, D, E)
 - Check that panel size matches configuration
 - Ensure proper ground connections
+- Verify power supply can handle the current draw
+- Check for loose connections on the HUB75 connector
 
 **Performance issues:**
-
-- Reduce color depth
-- Lower refresh rate
-- Use single buffering
+- Reduce color depth (6-bit → 4-bit can double refresh rate)
+- Lower refresh rate if flicker isn't an issue
+- Use single buffering to save memory
 - Optimize graphics drawing code
+- Consider using DMA for data output (future feature)
+
+**Power-related issues:**
+- Ensure adequate power supply (5V, sufficient amperage)
+- Check voltage drops across long cables
+- Verify ground connections between MCU and display
+- Consider separate power supplies for MCU and display
 
 ### Debug Features
 
@@ -367,8 +398,121 @@ This driver was inspired by:
 - [embassy-rs](https://github.com/embassy-rs/embassy) - Async embedded framework
 - [embedded-graphics](https://github.com/embedded-graphics/embedded-graphics) - Graphics library
 
+## Future Roadmap
+
+### Modular Architecture Vision
+
+Following the successful pattern of the [smart-leds](https://github.com/smart-leds-rs) project, we plan to evolve into a modular ecosystem:
+
+- **`hub75-traits`** - Core traits and abstractions for HUB75 displays
+- **`hub75-embassy`** - This crate, providing embassy-rs integration (current)
+- **`hub75-bitbang`** - Generic bit-banging implementation for any GPIO
+- **`hub75-stm32`** - STM32-specific optimizations using timers and DMA
+- **`hub75-rp2040`** - RP2040 PIO-based high-performance driver
+- **`hub75-esp32`** - ESP32 I2S/DMA implementation
+- **`hub75-nrf`** - Nordic-specific optimizations
+
+This approach will allow:
+- **Shared abstractions** across all implementations
+- **Platform-specific optimizations** where beneficial
+- **Consistent APIs** regardless of backend choice
+- **Easy migration** between implementations
+
+### Advanced Performance Optimizations
+
+Based on research from [hub75-rs](https://github.com/david-sawatzke/hub75-rs) and [advanced implementations](https://github.com/david-sawatzke/36c3_led_stuff/blob/b687925f00670082cba8eab4e593b8e0da07592b/c3_display/src/hub75dma.rs), future versions will implement:
+
+#### 1. **Pre-rendered Frame Buffers**
+```rust
+// Future API concept
+let mut display = Hub75Display::with_prerendered_buffers(pins);
+display.enable_dma_output(); // Platform-specific optimization
+```
+
+**Benefits:**
+- GPIO state pre-computed for entire frames
+- DMA-driven output with minimal CPU usage
+- Refresh rates >1kHz possible on fast MCUs
+- Requires RGB pins on same GPIO port
+
+#### 2. **Advanced Binary Code Modulation**
+```rust
+// Future timing control
+display.set_bcm_timing(BcmTiming::OneShot(timer)); // Hardware timer integration
+display.set_color_depth(ColorDepth::Bits8); // Full 8-bit color
+```
+
+**Benefits:**
+- True 8-bit color depth (16.7M colors)
+- Hardware timer-controlled OE timing
+- Flicker-free high refresh rates
+- Gamma correction support
+
+#### 3. **Multi-Panel Chaining**
+```rust
+// Future multi-panel support
+let chain = Hub75Chain::new()
+    .add_panel(panel1, Position::new(0, 0))
+    .add_panel(panel2, Position::new(64, 0))
+    .build();
+```
+
+**Benefits:**
+- Large display walls
+- Synchronized refresh across panels
+- Efficient data distribution
+
+#### 4. **Platform-Specific Backends**
+
+**STM32 with DMA:**
+```rust
+// STM32-specific optimizations
+let display = Hub75Stm32::new(pins)
+    .with_dma(dma_channel)
+    .with_timer(tim2)
+    .build();
+```
+
+**RP2040 with PIO:**
+```rust
+// RP2040 PIO state machine
+let display = Hub75Rp2040::new(pins)
+    .with_pio(pio0)
+    .with_state_machine(sm0)
+    .build();
+```
+
+**ESP32 with I2S:**
+```rust
+// ESP32 I2S parallel output
+let display = Hub75Esp32::new(pins)
+    .with_i2s(i2s0)
+    .with_dma_buffer_size(4096)
+    .build();
+```
+
+### Implementation Timeline
+
+1. **Phase 1** (Current) - Stable embassy-rs implementation
+2. **Phase 2** - Extract core traits into `hub75-traits`
+3. **Phase 3** - Platform-specific backend crates
+4. **Phase 4** - Advanced features (chaining, 8-bit color, DMA)
+
+### Contributing to the Ecosystem
+
+We welcome contributions to any part of the future ecosystem:
+
+- **Core traits design** - Help define the abstraction layer
+- **Platform backends** - Implement optimized drivers for specific MCUs
+- **Advanced features** - DMA integration, multi-panel support
+- **Documentation** - Performance guides, migration tutorials
+
+See our [contribution guidelines](CONTRIBUTING.md) for more details.
+
 ## Related Projects
 
 - [smart-leds-matrix](https://github.com/smart-leds-rs/smart-leds-matrix) - For WS2812-based LED matrices
 - [embedded-graphics](https://github.com/embedded-graphics/embedded-graphics) - 2D graphics library
 - [embassy-rs](https://github.com/embassy-rs/embassy) - Async embedded framework
+- [hub75-rs](https://github.com/david-sawatzke/hub75-rs) - Original HUB75 implementation
+- [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) - C++ reference implementation
