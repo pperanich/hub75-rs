@@ -28,7 +28,7 @@
 //! async fn main(spawner: Spawner) {
 //!     let pins = Hub75Pins::new(/* your pins */);
 //!     let mut display = Hub75Display::<_, 64, 32, 6>::new(pins);
-//!     
+//!
 //!     // Start background refresh task
 //!     spawner.spawn(display_task(display)).unwrap();
 //! }

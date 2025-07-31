@@ -225,9 +225,8 @@ where
 
                 // Apply brightness scaling
                 let brightness_factor = self.brightness.level() as u64;
-                let scaled_duration = Duration::from_micros(
-                    (bit_duration.as_micros() * brightness_factor / 255) as u64,
-                );
+                let scaled_duration =
+                    Duration::from_micros(bit_duration.as_micros() * brightness_factor / 255);
 
                 Timer::after(scaled_duration).await;
 
@@ -242,7 +241,7 @@ where
     /// Continuous refresh task for embassy
     pub async fn refresh_task(&mut self) -> ! {
         loop {
-            if let Err(_) = self.render_frame().await {
+            if self.render_frame().await.is_err() {
                 // Handle error - maybe reset pins or continue
                 Timer::after(Duration::from_millis(1)).await;
             }
