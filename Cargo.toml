@@ -1,0 +1,73 @@
+[package]
+name = "hub75-embassy"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Embassy-compatible HUB75 RGB LED matrix driver with embedded-graphics support"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/hub75-embassy"
+keywords = ["embedded", "hub75", "led-matrix", "embassy", "embedded-graphics"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+[dependencies]
+# Core embedded dependencies
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+nb = "1.1"
+
+# Embassy dependencies
+embassy-time = "0.3"
+embassy-sync = "0.6"
+
+# Graphics support
+embedded-graphics-core = "0.4"
+
+# Utility dependencies
+heapless = "0.8"
+
+# Optional dependencies for features
+embedded-graphics = { version = "0.8", optional = true }
+defmt = { version = "0.3", optional = true }
+
+[features]
+default = ["embedded-graphics"]
+
+# Graphics support
+embedded-graphics = ["dep:embedded-graphics"]
+
+# Logging support
+defmt = ["dep:defmt"]
+
+# Color depth options
+color-4bit = []
+color-6bit = []
+color-8bit = []
+
+# Panel size presets
+size-32x16 = []
+size-64x32 = []
+size-64x64 = []
+size-128x64 = []
+
+[dev-dependencies]
+# For examples and tests
+embassy-executor = "0.6"
+embassy-rp = "0.2"
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+
+[[example]]
+name = "basic_usage"
+required-features = ["embedded-graphics"]
+
+[[example]]
+name = "animations"
+required-features = ["embedded-graphics"]
+
+[[example]]
+name = "rp2040_example"
+required-features = ["embedded-graphics"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

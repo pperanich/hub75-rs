@@ -1,0 +1,198 @@
+//! Color management for HUB75 displays
+
+use core::fmt;
+
+/// RGB color representation for HUB75 displays
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Hub75Color<const BITS: usize> {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl<const BITS: usize> Hub75Color<BITS> {
+    /// Create a new color with the specified RGB values
+    /// Values are automatically clamped to the bit depth
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        let max_value = (1 << BITS) - 1;
+        Self {
+            r: r.min(max_value),
+            g: g.min(max_value),
+            b: b.min(max_value),
+        }
+    }
+
+    /// Create a black color (all components zero)
+    pub const fn black() -> Self {
+        Self { r: 0, g: 0, b: 0 }
+    }
+
+    /// Create a white color (all components at maximum)
+    pub const fn white() -> Self {
+        let max_value = (1 << BITS) - 1;
+        Self {
+            r: max_value,
+            g: max_value,
+            b: max_value,
+        }
+    }
+
+    /// Create a red color
+    pub const fn red() -> Self {
+        let max_value = (1 << BITS) - 1;
+        Self {
+            r: max_value,
+            g: 0,
+            b: 0,
+        }
+    }
+
+    /// Create a green color
+    pub const fn green() -> Self {
+        let max_value = (1 << BITS) - 1;
+        Self {
+            r: 0,
+            g: max_value,
+            b: 0,
+        }
+    }
+
+    /// Create a blue color
+    pub const fn blue() -> Self {
+        let max_value = (1 << BITS) - 1;
+        Self {
+            r: 0,
+            g: 0,
+            b: max_value,
+        }
+    }
+
+    /// Get the bit value for a specific bit plane
+    pub fn get_bit(&self, bit_plane: usize) -> (bool, bool, bool) {
+        if bit_plane >= BITS {
+            return (false, false, false);
+        }
+        
+        let mask = 1 << bit_plane;
+        (
+            (self.r & mask) != 0,
+            (self.g & mask) != 0,
+            (self.b & mask) != 0,
+        )
+    }
+
+    /// Convert from 8-bit RGB values, scaling to the target bit depth
+    pub fn from_rgb8(r: u8, g: u8, b: u8) -> Self {
+        if BITS >= 8 {
+            Self::new(r, g, b)
+        } else {
+            let shift = 8 - BITS;
+            Self::new(r >> shift, g >> shift, b >> shift)
+        }
+    }
+
+    /// Convert to 8-bit RGB values, scaling from the current bit depth
+    pub fn to_rgb8(&self) -> (u8, u8, u8) {
+        if BITS >= 8 {
+            (self.r, self.g, self.b)
+        } else {
+            let shift = 8 - BITS;
+            (self.r << shift, self.g << shift, self.b << shift)
+        }
+    }
+}
+
+impl<const BITS: usize> Default for Hub75Color<BITS> {
+    fn default() -> Self {
+        Self::black()
+    }
+}
+
+impl<const BITS: usize> fmt::Display for Hub75Color<BITS> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RGB({}, {}, {})", self.r, self.g, self.b)
+    }
+}
+
+#[cfg(feature = "embedded-graphics")]
+mod embedded_graphics_support {
+    use super::*;
+    use embedded_graphics_core::pixelcolor::{Rgb565, Rgb888, RgbColor};
+
+    impl<const BITS: usize> From<Rgb565> for Hub75Color<BITS> {
+        fn from(color: Rgb565) -> Self {
+            Self::from_rgb8(
+                (color.r() as u16 * 255 / 31) as u8,
+                (color.g() as u16 * 255 / 63) as u8,
+                (color.b() as u16 * 255 / 31) as u8,
+            )
+        }
+    }
+
+    impl<const BITS: usize> From<Rgb888> for Hub75Color<BITS> {
+        fn from(color: Rgb888) -> Self {
+            Self::from_rgb8(color.r(), color.g(), color.b())
+        }
+    }
+
+    impl<const BITS: usize> From<Hub75Color<BITS>> for Rgb565 {
+        fn from(color: Hub75Color<BITS>) -> Self {
+            let (r, g, b) = color.to_rgb8();
+            Rgb565::new(r >> 3, g >> 2, b >> 3)
+        }
+    }
+
+    impl<const BITS: usize> From<Hub75Color<BITS>> for Rgb888 {
+        fn from(color: Hub75Color<BITS>) -> Self {
+            let (r, g, b) = color.to_rgb8();
+            Rgb888::new(r, g, b)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_color_creation() {
+        let color = Hub75Color::<6>::new(63, 32, 15);
+        assert_eq!(color.r, 63);
+        assert_eq!(color.g, 32);
+        assert_eq!(color.b, 15);
+    }
+
+    #[test]
+    fn test_color_clamping() {
+        let color = Hub75Color::<4>::new(255, 255, 255);
+        assert_eq!(color.r, 15); // 2^4 - 1 = 15
+        assert_eq!(color.g, 15);
+        assert_eq!(color.b, 15);
+    }
+
+    #[test]
+    fn test_bit_extraction() {
+        let color = Hub75Color::<4>::new(10, 5, 3); // 1010, 0101, 0011 in binary
+        
+        let (r0, g0, b0) = color.get_bit(0);
+        assert_eq!((r0, g0, b0), (false, true, true)); // LSB
+        
+        let (r1, g1, b1) = color.get_bit(1);
+        assert_eq!((r1, g1, b1), (true, false, true));
+        
+        let (r3, g3, b3) = color.get_bit(3);
+        assert_eq!((r3, g3, b3), (true, false, false)); // MSB
+    }
+
+    #[test]
+    fn test_rgb8_conversion() {
+        let color = Hub75Color::<6>::from_rgb8(255, 128, 64);
+        let (r, g, b) = color.to_rgb8();
+        
+        // Should be close to original values (some precision loss expected)
+        assert!(r >= 252); // 63 << 2 = 252
+        assert!(g >= 124 && g <= 128); // 32 << 2 = 128
+        assert!(b >= 60 && b <= 64); // 16 << 2 = 64
+    }
+}
