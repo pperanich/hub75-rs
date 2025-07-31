@@ -664,8 +664,6 @@ We welcome contributions to any part of the future ecosystem:
 - **Advanced features** - DMA integration, multi-panel support
 - **Documentation** - Performance guides, migration tutorials
 
-See our [contribution guidelines](CONTRIBUTING.md) for more details.
-
 ## Related Projects
 
 - [smart-leds-matrix](https://github.com/smart-leds-rs/smart-leds-matrix) - For WS2812-based LED matrices
