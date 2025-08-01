@@ -42,8 +42,8 @@ futures = { version = "0.3", default-features = false, features = [
 defmt = "1.0"
 defmt-rtt = "1.0"
 
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 # Hardware abstraction
-cortex-m = { version = "0.7" }
 cortex-m-rt = "0.7"
 panic-probe = { version = "1.0", features = ["print-defmt"] }
 
@@ -56,7 +56,7 @@ rand_chacha = { version = "0.9", default-features = false }
 debug = 2
 
 [features]
-default = ["nrf52840"]
+default = []
 
 # nRF chip variants
 nrf52832 = ["embassy-nrf/nrf52832"]
@@ -89,4 +89,3 @@ path = "src/bin/text_display.rs"
 [[bin]]
 name = "graphics_demo"
 path = "src/bin/graphics_demo.rs"
-
