@@ -31,14 +31,14 @@ use embedded_graphics::{
 use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_probe as _};
 
-type Display = Hub75Display<Output<'static>, 64, 32, 6>;
+type Display = Hub75Display<Output<'static>, 32, 32, 6>;
 
 #[embassy_executor::task]
 async fn combined_display_task(mut display: Display) {
     info!("Starting combined display and graphics task");
     
     // Enable double buffering for smooth updates
-    display.set_double_buffering(true);
+    // display.set_double_buffering(true);
 
     let mut counter = 0u32;
     
@@ -47,10 +47,11 @@ async fn combined_display_task(mut display: Display) {
 
     loop {
         // Clear the back buffer
-        display.clear();
+        defmt::info!("LOOP");
+        // display.clear();
 
         // Draw a red rectangle
-        Rectangle::new(Point::new(2, 2), Size::new(20, 12))
+        Rectangle::new(Point::new(5, 5), Size::new(2, 2))
             .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::RED).build())
             .draw(&mut display)
             .unwrap();
@@ -89,7 +90,7 @@ async fn combined_display_task(mut display: Display) {
         .unwrap();
 
         // Swap buffers to display the new frame
-        display.swap_buffers();
+        // display.swap_buffers();
 
         // Render the frame to the display
         if let Err(e) = display.render_frame(&mut delay).await {
@@ -109,24 +110,24 @@ async fn main(spawner: Spawner) {
     // Configure HUB75 pins for nRF52 using commonly available pins
     let pins = Hub75Pins {
         rgb: Hub75RgbPins {
-            r1: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            r1: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
             g1: Output::new(p.P0_03, Level::Low, OutputDrive::Standard),
-            b1: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
-            r2: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
-            g2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
-            b2: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
+            b1: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
+            r2: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
+            g2: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            b2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
         },
         address: Hub75AddressPins {
-            a: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
-            b: Output::new(p.P0_28, Level::Low, OutputDrive::Standard),
-            c: Output::new(p.P0_29, Level::Low, OutputDrive::Standard),
-            d: Some(Output::new(p.P0_30, Level::Low, OutputDrive::Standard)),
+            a: Output::new(p.P0_27, Level::Low, OutputDrive::Standard),
+            b: Output::new(p.P1_08, Level::Low, OutputDrive::Standard),
+            c: Output::new(p.P1_09, Level::Low, OutputDrive::Standard),
+            d: Some(Output::new(p.P0_26, Level::Low, OutputDrive::Standard)),
             e: None,
         },
         control: Hub75ControlPins {
-            clk: Output::new(p.P0_12, Level::Low, OutputDrive::Standard),
-            lat: Output::new(p.P0_13, Level::Low, OutputDrive::Standard),
-            oe: Output::new(p.P0_14, Level::High, OutputDrive::Standard), // Active low
+            clk: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
+            lat: Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
+            oe: Output::new(p.P0_25, Level::High, OutputDrive::Standard),
         },
     };
 
@@ -143,6 +144,7 @@ async fn main(spawner: Spawner) {
     // Since the display can't be cloned, we need to use a different approach
     // For now, let's combine both tasks into one
     spawner.spawn(combined_display_task(display)).unwrap();
+    // combined_display_task(display).await;
 
     info!("Tasks spawned, entering main loop");
     
