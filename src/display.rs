@@ -290,6 +290,14 @@ where
 
     /// Render a complete frame using Binary Code Modulation
     pub async fn render_frame(&mut self, delay: &mut impl DelayNs) -> Result<(), Hub75Error> {
+        
+        // Prevents ghosting
+        // https://github.com/david-sawatzke/hub75-rs/blob/ba1eaa6de065909bba5776557e7986229df54863/src/lib.rs#L296
+        delay.delay_us(2).await;
+        self.pins.control.lat.set_low().unwrap();
+        delay.delay_us(2).await;
+        self.pins.control.lat.set_high().unwrap();
+
         for bit_plane in 0..COLOR_BITS {
             for row in 0..(HEIGHT / 2) {
                 self.current_row = row;

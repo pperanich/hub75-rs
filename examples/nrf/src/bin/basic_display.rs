@@ -31,14 +31,14 @@ use embedded_graphics::{
 use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_probe as _};
 
-type Display = Hub75Display<Output<'static>, 32, 32, 6>;
+type Display = Hub75Display<Output<'static>, 32, 32, 2>;
 
 #[embassy_executor::task]
 async fn combined_display_task(mut display: Display) {
     info!("Starting combined display and graphics task");
     
     // Enable double buffering for smooth updates
-    // display.set_double_buffering(true);
+    display.set_double_buffering(true);
 
     let mut counter = 0u32;
     
@@ -47,50 +47,55 @@ async fn combined_display_task(mut display: Display) {
 
     loop {
         // Clear the back buffer
-        defmt::info!("LOOP");
-        // display.clear();
+        // defmt::info!("LOOP");
+        display.clear();
+
+        // Rectangle::new(Point::new(0, 0), Size::new(32,32))
+        //     .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build())
+        //     .draw(&mut display)
+        //     .unwrap();
 
         // Draw a red rectangle
-        Rectangle::new(Point::new(5, 5), Size::new(2, 2))
+        Rectangle::new(Point::new(5, 16), Size::new(2, 2))
             .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::RED).build())
             .draw(&mut display)
             .unwrap();
 
         // Draw a green circle
-        Circle::new(Point::new(30, 8), 10)
+        Circle::new(Point::new(16, 16), 6)
             .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::GREEN).build())
             .draw(&mut display)
             .unwrap();
 
-        // Draw a blue rectangle
-        Rectangle::new(Point::new(45, 2), Size::new(15, 12))
-            .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLUE).build())
-            .draw(&mut display)
-            .unwrap();
+        // // Draw a blue rectangle
+        // Rectangle::new(Point::new(45, 2), Size::new(15, 12))
+        //     .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLUE).build())
+        //     .draw(&mut display)
+        //     .unwrap();
 
-        // Draw counter text
-        let mut text_buffer = heapless::String::<32>::new();
-        core::fmt::write(&mut text_buffer, format_args!("Count: {}", counter)).unwrap();
+        // // Draw counter text
+        // let mut text_buffer = heapless::String::<32>::new();
+        // core::fmt::write(&mut text_buffer, format_args!("Count: {}", counter)).unwrap();
         
-        Text::new(
-            &text_buffer,
-            Point::new(2, 25),
-            MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE),
-        )
-        .draw(&mut display)
-        .unwrap();
+        // Text::new(
+        //     &text_buffer,
+        //     Point::new(2, 25),
+        //     MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE),
+        // )
+        // .draw(&mut display)
+        // .unwrap();
 
         // Show nRF52 info
         Text::new(
             "nRF52",
-            Point::new(45, 25),
+            Point::new(2, 10),
             MonoTextStyle::new(&FONT_6X10, Rgb565::CYAN),
         )
         .draw(&mut display)
         .unwrap();
 
         // Swap buffers to display the new frame
-        // display.swap_buffers();
+        display.swap_buffers();
 
         // Render the frame to the display
         if let Err(e) = display.render_frame(&mut delay).await {
@@ -98,7 +103,7 @@ async fn combined_display_task(mut display: Display) {
         }
 
         counter = counter.wrapping_add(1);
-        Timer::after(Duration::from_millis(100)).await;
+        Timer::after(Duration::from_millis(2)).await;
     }
 }
 
@@ -108,26 +113,28 @@ async fn main(spawner: Spawner) {
     info!("nRF HUB75 Basic Display Example");
 
     // Configure HUB75 pins for nRF52 using commonly available pins
+    let drive = OutputDrive::Standard;
+
     let pins = Hub75Pins {
         rgb: Hub75RgbPins {
-            r1: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
-            g1: Output::new(p.P0_03, Level::Low, OutputDrive::Standard),
-            b1: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
-            r2: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
-            g2: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
-            b2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
+            r1: Output::new(p.P0_07, Level::Low, drive), // R1 - GPIO6 - D6 - P0.07
+            g1: Output::new(p.P0_03, Level::Low, drive), // G1 - GPIOA5 - A5 - P0.03
+            b1: Output::new(p.P0_05, Level::Low, drive), // B1 - GPIOA1 - A1 - P0.05
+            r2: Output::new(p.P0_04, Level::Low, drive), // R2 - GPIOA0 - A0 - P0.04
+            g2: Output::new(p.P0_02, Level::Low, drive), // G2 - GPIOA4 - A4 - P0.02
+            b2: Output::new(p.P0_06, Level::Low, drive), // B2 - GPIO11 - D11 - P0.06
         },
         address: Hub75AddressPins {
-            a: Output::new(p.P0_27, Level::Low, OutputDrive::Standard),
-            b: Output::new(p.P1_08, Level::Low, OutputDrive::Standard),
-            c: Output::new(p.P1_09, Level::Low, OutputDrive::Standard),
-            d: Some(Output::new(p.P0_26, Level::Low, OutputDrive::Standard)),
+            a: Output::new(p.P0_27, Level::Low, drive), // ADDR_A - GPIO10 - D10 - P0.27
+            b: Output::new(p.P1_08, Level::Low, drive), // ADDR_B - GPIO5 - D5 - P1.08
+            c: Output::new(p.P1_09, Level::Low, drive), // ADDR_C - GPIO13 - D13 - P1.09
+            d: Some(Output::new(p.P0_26, Level::Low, drive)), // ADDR_D - GPIO9 - D9 - P0.26
             e: None,
         },
         control: Hub75ControlPins {
-            clk: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
-            lat: Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
-            oe: Output::new(p.P0_25, Level::High, OutputDrive::Standard),
+            clk: Output::new(p.P0_08, Level::Low, drive), // CLK - GPIO12 - D12 - P0.08
+            lat: Output::new(p.P0_24, Level::Low, drive), // LAT - GPIORX - RXD - P0.24
+            oe: Output::new(p.P0_25, Level::High, drive), // OE - GPIOTX - TXD - P0.25
         },
     };
 
@@ -144,7 +151,6 @@ async fn main(spawner: Spawner) {
     // Since the display can't be cloned, we need to use a different approach
     // For now, let's combine both tasks into one
     spawner.spawn(combined_display_task(display)).unwrap();
-    // combined_display_task(display).await;
 
     info!("Tasks spawned, entering main loop");
     
