@@ -55,9 +55,6 @@ rand_core = "0.9"
 rand_chacha = { version = "0.9", default-features = false }
 static_cell = "2.1.1"
 
-[profile.release]
-debug = 2
-
 [features]
 default = []
 
@@ -92,3 +89,17 @@ path = "src/bin/text_display.rs"
 [[bin]]
 name = "graphics_demo"
 path = "src/bin/graphics_demo.rs"
+
+[profile.dev]
+opt-level = 3
+codegen-units = 1
+lto = "off"
+
+[profile.release]
+debug = true
+codegen-units = 1
+lto = "off"
+
+[profile.lto]
+inherits = "release"
+lto = true

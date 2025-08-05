@@ -16,10 +16,11 @@
 #![no_std]
 #![no_main]
 
-
-use defmt::*;
+use core::ops::DerefMut;
 use embassy_executor::Spawner;
 use embassy_nrf::gpio::{Level, Output, OutputDrive};
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Timer};
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X10, MonoTextStyle},
@@ -28,40 +29,33 @@ use embedded_graphics::{
     primitives::{Circle, PrimitiveStyleBuilder, Rectangle},
     text::Text,
 };
-use embassy_sync::mutex::{Mutex};
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
-use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
-use {defmt_rtt as _, panic_probe as _};
+use hub75::{display, Hub75AddressPins, Hub75ControlPins, Hub75Display, Hub75Pins, Hub75RgbPins};
 use static_cell::StaticCell;
+use {defmt_rtt as _, panic_probe as _};
 
 type Display = Hub75Display<Output<'static>, 32, 32, 2>;
 
 static DISPLAY: StaticCell<Mutex<NoopRawMutex, Display>> = StaticCell::new();
 
 #[embassy_executor::task]
-pub async fn refresh_task(display: &'static Mutex<NoopRawMutex, Display>) -> ! {
+pub async fn refresh_task(display_handle: &'static Mutex<NoopRawMutex, Display>) -> ! {
     let mut delay = embassy_time::Delay;
 
     loop {
         {
-        let mut handle = display.lock().await;
-        let _ = handle.render_frame(delay).await;
+            let mut display = display_handle.lock().await;
+            let _ = display.render_frame(&mut delay).await;
         }
         Timer::after(Duration::from_millis(1)).await;
-
-            
-        // if self.render_frame(delay).await.is_err() {
-        //     // Handle error - maybe reset pins or continue
-        // }
     }
 }
 
 #[embassy_executor::task]
 async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Display>) {
-    info!("Starting combined display and graphics task");
+    defmt::info!("Starting combined display and graphics task");
 
     let mut counter = 0u32;
-    
+
     // Create a delay provider using embassy-time
     let mut delay = embassy_time::Delay;
 
@@ -69,24 +63,33 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
         // Clear the back buffer
         defmt::info!("LOOP");
         {
-            let mut display = display_handle.lock().await;
+            let mut display_guard = display_handle.lock().await;
+            let mut display = display_guard.deref_mut();
             display.clear();
 
-            Rectangle::new(Point::new(0, 0), Size::new(32,32))
-                .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build())
-                .draw(&mut display)
+            Rectangle::new(Point::new(0, 0), Size::new(32, 32))
+                .into_styled(
+                    PrimitiveStyleBuilder::new()
+                        .fill_color(Rgb565::WHITE)
+                        .build(),
+                )
+                .draw(display)
                 .unwrap();
 
             // Draw a red rectangle
             Rectangle::new(Point::new(5, 16), Size::new(2, 2))
                 .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::RED).build())
-                .draw(&mut display)
+                .draw(display)
                 .unwrap();
 
             // Draw a green circle
             Circle::new(Point::new(16, 16), 6)
-                .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::GREEN).build())
-                .draw(&mut display)
+                .into_styled(
+                    PrimitiveStyleBuilder::new()
+                        .fill_color(Rgb565::GREEN)
+                        .build(),
+                )
+                .draw(display)
                 .unwrap();
 
             // // Draw a blue rectangle
@@ -98,7 +101,7 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
             // // Draw counter text
             // let mut text_buffer = heapless::String::<32>::new();
             // core::fmt::write(&mut text_buffer, format_args!("Count: {}", counter)).unwrap();
-            
+
             // Text::new(
             //     &text_buffer,
             //     Point::new(2, 25),
@@ -113,13 +116,13 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
                 Point::new(2, 10),
                 MonoTextStyle::new(&FONT_6X10, Rgb565::CYAN),
             )
-            .draw(&mut display)
+            .draw(display)
             .unwrap();
 
             // Swap buffers to display the new frame
             display.swap_buffers();
         }
-        
+
         counter = counter.wrapping_add(1);
         Timer::after(Duration::from_millis(100)).await;
     }
@@ -128,7 +131,7 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_nrf::init(Default::default());
-    info!("nRF HUB75 Basic Display Example");
+    defmt::info!("nRF HUB75 Basic Display Example");
 
     // Configure HUB75 pins for nRF52 using commonly available pins
     let drive = OutputDrive::Standard;
@@ -160,12 +163,12 @@ async fn main(spawner: Spawner) {
     let mut display = match Hub75Display::new(pins) {
         Ok(display) => display,
         Err(e) => {
-            error!("Failed to create display: {:?}", e);
+            defmt::error!("Failed to create display: {:?}", e);
             return;
         }
     };
-    info!("Display initialized");
-        
+    defmt::info!("Display initialized");
+
     // Enable double buffering for smooth updates
     display.set_double_buffering(true);
 
@@ -176,11 +179,12 @@ async fn main(spawner: Spawner) {
     spawner.spawn(combined_display_task(display)).unwrap();
     spawner.spawn(refresh_task(display)).unwrap();
 
-    info!("Tasks spawned, entering main loop");
-    
+    defmt::info!("Tasks spawned, entering main loop");
+
     // Main task can do other work or just sleep
     loop {
         Timer::after(Duration::from_secs(1)).await;
-        info!("Main loop tick");
+        defmt::info!("Main loop tick");
     }
 }
+
