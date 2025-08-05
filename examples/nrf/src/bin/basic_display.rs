@@ -16,6 +16,7 @@
 #![no_std]
 #![no_main]
 
+use core::fmt::Write;
 use core::ops::DerefMut;
 use embassy_executor::Spawner;
 use embassy_nrf::gpio::{Level, Output, OutputDrive};
@@ -32,6 +33,8 @@ use embedded_graphics::{
 use hub75::{display, Hub75AddressPins, Hub75ControlPins, Hub75Display, Hub75Pins, Hub75RgbPins};
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
+
+use heapless::String;
 
 type Display = Hub75Display<Output<'static>, 32, 32, 2>;
 
@@ -61,20 +64,20 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
 
     loop {
         // Clear the back buffer
-        defmt::info!("LOOP");
+        // defmt::info!("LOOP");
         {
             let mut display_guard = display_handle.lock().await;
             let mut display = display_guard.deref_mut();
             display.clear();
 
-            Rectangle::new(Point::new(0, 0), Size::new(32, 32))
-                .into_styled(
-                    PrimitiveStyleBuilder::new()
-                        .fill_color(Rgb565::WHITE)
-                        .build(),
-                )
-                .draw(display)
-                .unwrap();
+            // Rectangle::new(Point::new(0, 0), Size::new(32, 32))
+            //     .into_styled(
+            //         PrimitiveStyleBuilder::new()
+            //             .fill_color(Rgb565::WHITE)
+            //             .build(),
+            //     )
+            //     .draw(display)
+            //     .unwrap();
 
             // Draw a red rectangle
             Rectangle::new(Point::new(5, 16), Size::new(2, 2))
@@ -110,9 +113,12 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
             // .draw(&mut display)
             // .unwrap();
 
+            let mut buf: String<64> = String::new();
+            write!(buf, "nRF{}", counter % 99).unwrap();
+
             // Show nRF52 info
             Text::new(
-                "nRF52",
+                buf.as_str(),
                 Point::new(2, 10),
                 MonoTextStyle::new(&FONT_6X10, Rgb565::CYAN),
             )
