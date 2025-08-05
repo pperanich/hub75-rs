@@ -42,6 +42,8 @@ static DISPLAY: StaticCell<Mutex<NoopRawMutex, Display>> = StaticCell::new();
 
 #[embassy_executor::task]
 pub async fn refresh_task(display_handle: &'static Mutex<NoopRawMutex, Display>) -> ! {
+
+    defmt::info!("Starting refresh task");
     let mut delay = embassy_time::Delay;
 
     loop {
@@ -49,13 +51,13 @@ pub async fn refresh_task(display_handle: &'static Mutex<NoopRawMutex, Display>)
             let mut display = display_handle.lock().await;
             let _ = display.render_frame(&mut delay).await;
         }
-        Timer::after(Duration::from_millis(1)).await;
+        Timer::after(Duration::from_millis(5)).await;
     }
 }
 
 #[embassy_executor::task]
 async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Display>) {
-    defmt::info!("Starting combined display and graphics task");
+    defmt::info!("Starting draw task");
 
     let mut counter = 0u32;
 
@@ -70,14 +72,14 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
             let mut display = display_guard.deref_mut();
             display.clear();
 
-            // Rectangle::new(Point::new(0, 0), Size::new(32, 32))
-            //     .into_styled(
-            //         PrimitiveStyleBuilder::new()
-            //             .fill_color(Rgb565::WHITE)
-            //             .build(),
-            //     )
-            //     .draw(display)
-            //     .unwrap();
+            Rectangle::new(Point::new(0, 0), Size::new(32, 32))
+                .into_styled(
+                    PrimitiveStyleBuilder::new()
+                        .fill_color(Rgb565::WHITE)
+                        .build(),
+                )
+                .draw(display)
+                .unwrap();
 
             // Draw a red rectangle
             Rectangle::new(Point::new(5, 16), Size::new(2, 2))
@@ -114,13 +116,13 @@ async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Disp
             // .unwrap();
 
             let mut buf: String<64> = String::new();
-            write!(buf, "nRF{}", counter % 99).unwrap();
+            write!(buf, "nRF{}", counter % 100).unwrap();
 
             // Show nRF52 info
             Text::new(
                 buf.as_str(),
                 Point::new(2, 10),
-                MonoTextStyle::new(&FONT_6X10, Rgb565::CYAN),
+                MonoTextStyle::new(&FONT_6X10, Rgb565::BLACK),
             )
             .draw(display)
             .unwrap();
@@ -190,7 +192,7 @@ async fn main(spawner: Spawner) {
     // Main task can do other work or just sleep
     loop {
         Timer::after(Duration::from_secs(1)).await;
-        defmt::info!("Main loop tick");
+        // defmt::info!("Main loop tick");
     }
 }
 
