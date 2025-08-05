@@ -24,50 +24,74 @@ use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use {defmt_rtt as _, panic_probe as _};
 
-type Display = Hub75Display<Output<'static>, 64, 32, 6>;
+use core::ops::DerefMut;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::mutex::Mutex;
+use static_cell::StaticCell;
+
+type Display = Hub75Display<Output<'static>, 32, 32, 1>;
+
+static DISPLAY: StaticCell<Mutex<NoopRawMutex, Display>> = StaticCell::new();
 
 #[embassy_executor::task]
-async fn animation_task(mut display: Display) {
+pub async fn refresh_task(display_handle: &'static Mutex<NoopRawMutex, Display>) -> ! {
+
+    defmt::info!("Starting refresh task");
+    let mut delay = embassy_time::Delay;
+
+    loop {
+        {
+            let mut display = display_handle.lock().await;
+            let _ = display.render_frame(&mut delay).await;
+        }
+        Timer::after(Duration::from_millis(5)).await;
+    }
+}
+
+#[embassy_executor::task]
+async fn animation_task(display_handle: &'static Mutex<NoopRawMutex, Display>) {
     info!("Starting animation task");
-    
-    display.set_double_buffering(true);
     
     let mut rng = ChaCha8Rng::seed_from_u64(12345);
     let mut frame = 0u32;
 
     loop {
-        display.clear();
+        {
+            let mut display_guard = display_handle.lock().await;
+            let mut display = display_guard.deref_mut();
+            display.clear();
 
-        // Pattern 1: Moving rainbow bars
-        if frame < 300 {
-            rainbow_bars(&mut display, frame);
-        }
-        // Pattern 2: Bouncing balls
-        else if frame < 600 {
-            bouncing_balls(&mut display, frame - 300, &mut rng);
-        }
-        // Pattern 3: Plasma effect
-        else if frame < 900 {
-            plasma_effect(&mut display, frame - 600);
-        }
-        // Pattern 4: Random sparkles
-        else {
-            random_sparkles(&mut display, &mut rng);
-            if frame > 1200 {
-                frame = 0; // Reset cycle
+            // Pattern 1: Moving rainbow bars
+            if frame < 300 {
+                rainbow_bars(&mut display, frame);
             }
-        }
+            // Pattern 2: Bouncing balls
+            else if frame < 600 {
+                bouncing_balls(&mut display, frame - 300, &mut rng);
+            }
+            // Pattern 3: Plasma effect
+            else if frame < 900 {
+                plasma_effect(&mut display, frame - 600);
+            }
+            // Pattern 4: Random sparkles
+            else {
+                random_sparkles(&mut display, &mut rng);
+                if frame > 1200 {
+                    frame = 0; // Reset cycle
+                }
+            }
 
-        display.swap_buffers();
+            display.swap_buffers();
+        }
         frame += 1;
         Timer::after(Duration::from_millis(50)).await;
     }
 }
 
 fn rainbow_bars(display: &mut Display, frame: u32) {
-    let offset = (frame / 2) % 64;
+    let offset = (frame / 2) % 32;
     
-    for x in 0..64 {
+    for x in 0..32 {
         let hue = ((x + offset) * 6) % 360;
         let color = hsv_to_rgb565(hue as u16, 255, 255);
         
@@ -85,8 +109,8 @@ fn bouncing_balls(display: &mut Display, frame: u32, _rng: &mut ChaCha8Rng) {
     
     for i in 0..ball_count {
         let phase = frame as f32 * 0.1 + i as f32 * 2.0;
-        let x = (32.0 + 20.0 * (phase * 0.7).sin()) as i32;
-        let y = (16.0 + 10.0 * (phase).sin()) as i32;
+        let x = (8.0 + 10.0 * (phase * 0.7).sin()) as i32;
+        let y = (8.0 + 10.0 * (phase).sin()) as i32;
         
         Circle::new(Point::new(x - 3, y - 3), 6)
             .into_styled(PrimitiveStyleBuilder::new().fill_color(colors[i]).build())
@@ -98,8 +122,8 @@ fn bouncing_balls(display: &mut Display, frame: u32, _rng: &mut ChaCha8Rng) {
 fn plasma_effect(display: &mut Display, frame: u32) {
     let time = frame as f32 * 0.1;
     
-    for y in 0..32 {
-        for x in 0..64 {
+    for y in 0..16 {
+        for x in 0..16 {
             let fx = x as f32;
             let fy = y as f32;
             
@@ -112,7 +136,7 @@ fn plasma_effect(display: &mut Display, frame: u32) {
             let hue = (plasma as u16) % 360;
             let color = hsv_to_rgb565(hue, 255, 200);
             
-            Rectangle::new(Point::new(x as i32, y as i32), Size::new(1, 1))
+            Rectangle::new(Point::new(x*2 as i32, y*2 as i32), Size::new(2, 2))
                 .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build())
                 .draw(display)
                 .ok();
@@ -123,7 +147,7 @@ fn plasma_effect(display: &mut Display, frame: u32) {
 fn random_sparkles(display: &mut Display, rng: &mut ChaCha8Rng) {
     // Generate random sparkles
     for _ in 0..20 {
-        let x = (rng.next_u32() % 64) as i32;
+        let x = (rng.next_u32() % 32) as i32;
         let y = (rng.next_u32() % 32) as i32;
         let brightness = (rng.next_u32() % 256) as u8;
         
@@ -184,28 +208,28 @@ async fn main(spawner: Spawner) {
     // Configure HUB75 pins using new nested structure
     let pins = Hub75Pins {
         rgb: Hub75RgbPins {
-            r1: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            r1: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
             g1: Output::new(p.P0_03, Level::Low, OutputDrive::Standard),
-            b1: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
-            r2: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
-            g2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
-            b2: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
+            b1: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
+            r2: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
+            g2: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            b2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
         },
         address: Hub75AddressPins {
-            a: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
-            b: Output::new(p.P0_28, Level::Low, OutputDrive::Standard),
-            c: Output::new(p.P0_29, Level::Low, OutputDrive::Standard),
-            d: Some(Output::new(p.P0_30, Level::Low, OutputDrive::Standard)),
+            a: Output::new(p.P0_27, Level::Low, OutputDrive::Standard),
+            b: Output::new(p.P1_08, Level::Low, OutputDrive::Standard),
+            c: Output::new(p.P1_09, Level::Low, OutputDrive::Standard),
+            d: Some(Output::new(p.P0_26, Level::Low, OutputDrive::Standard)),
             e: None,
         },
         control: Hub75ControlPins {
-            clk: Output::new(p.P0_12, Level::Low, OutputDrive::Standard),
-            lat: Output::new(p.P0_13, Level::Low, OutputDrive::Standard),
-            oe: Output::new(p.P0_14, Level::High, OutputDrive::Standard),
+            clk: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
+            lat: Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
+            oe: Output::new(p.P0_25, Level::High, OutputDrive::Standard),
         },
     };
 
-    let display = match Hub75Display::new(pins) {
+    let mut display = match Hub75Display::new(pins) {
         Ok(display) => display,
         Err(e) => {
             error!("Failed to create display: {:?}", e);
@@ -214,7 +238,13 @@ async fn main(spawner: Spawner) {
     };
     info!("Display initialized");
 
+    // Enable double buffering for smooth updates
+    display.set_double_buffering(true);
+
+    let display = DISPLAY.init(Mutex::new(display));
+
     spawner.spawn(animation_task(display)).unwrap();
+    spawner.spawn(refresh_task(display)).unwrap();
 
     info!("Animation started");
     

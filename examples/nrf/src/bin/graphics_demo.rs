@@ -27,9 +27,9 @@ use embedded_graphics::{
 use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_probe as _};
 
-type Display = Hub75Display<Output<'static>, 64, 32, 6>;
+type Display = Hub75Display<Output<'static>, 32, 32, 4>;
 
-#[embassy_executor::task]
+// #[embassy_executor::task]
 async fn graphics_demo_task(mut display: Display) {
     info!("Starting graphics demo task");
     
@@ -41,6 +41,7 @@ async fn graphics_demo_task(mut display: Display) {
     loop {
         display.clear();
         
+        defmt::info!("HELLO!");
         match demo_phase {
             0 => geometric_shapes_demo(&mut display, frame),
             1 => line_patterns_demo(&mut display, frame),
@@ -92,7 +93,7 @@ fn geometric_shapes_demo(display: &mut Display, frame: u32) {
         .ok();
     
     // Pulsing circle
-    let radius = 3 + (frame / 5) % 5;
+    let radius = 3; // + (frame / 5) % 5;
     Circle::new(Point::new(52, 10), radius * 2)
         .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLUE).build())
         .draw(display)
@@ -190,24 +191,24 @@ async fn main(spawner: Spawner) {
     // Configure HUB75 pins using new nested structure
     let pins = Hub75Pins {
         rgb: Hub75RgbPins {
-            r1: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            r1: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
             g1: Output::new(p.P0_03, Level::Low, OutputDrive::Standard),
-            b1: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
-            r2: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
-            g2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
-            b2: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
+            b1: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
+            r2: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
+            g2: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            b2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
         },
         address: Hub75AddressPins {
-            a: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
-            b: Output::new(p.P0_28, Level::Low, OutputDrive::Standard),
-            c: Output::new(p.P0_29, Level::Low, OutputDrive::Standard),
-            d: Some(Output::new(p.P0_30, Level::Low, OutputDrive::Standard)),
+            a: Output::new(p.P0_27, Level::Low, OutputDrive::Standard),
+            b: Output::new(p.P1_08, Level::Low, OutputDrive::Standard),
+            c: Output::new(p.P1_09, Level::Low, OutputDrive::Standard),
+            d: Some(Output::new(p.P0_26, Level::Low, OutputDrive::Standard)),
             e: None,
         },
         control: Hub75ControlPins {
-            clk: Output::new(p.P0_12, Level::Low, OutputDrive::Standard),
-            lat: Output::new(p.P0_13, Level::Low, OutputDrive::Standard),
-            oe: Output::new(p.P0_14, Level::High, OutputDrive::Standard),
+            clk: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
+            lat: Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
+            oe: Output::new(p.P0_25, Level::High, OutputDrive::Standard),
         },
     };
 
@@ -220,7 +221,8 @@ async fn main(spawner: Spawner) {
     };
     info!("Display initialized");
 
-    spawner.spawn(graphics_demo_task(display)).unwrap();
+    // spawner.spawn(graphics_demo_task(display)).unwrap();
+    graphics_demo_task(display).await;
 
     info!("Graphics demo started");
     

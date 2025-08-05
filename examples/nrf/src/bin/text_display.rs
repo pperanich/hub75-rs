@@ -24,7 +24,7 @@ use embedded_graphics::{
 use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_probe as _};
 
-type Display = Hub75Display<Output<'static>, 64, 32, 6>;
+type Display = Hub75Display<Output<'static>, 32, 32, 6>;
 
 #[embassy_executor::task]
 async fn text_animation_task(mut display: Display) {
@@ -40,7 +40,7 @@ async fn text_animation_task(mut display: Display) {
     ];
     
     let mut message_index = 0;
-    let mut scroll_offset = 64i32; // Start off-screen to the right
+    let mut scroll_offset = 32i32; // Start off-screen to the right
     
     loop {
         display.clear();
@@ -73,7 +73,7 @@ async fn text_animation_task(mut display: Display) {
         
         Text::new(
             &time_str,
-            Point::new(45, 25),
+            Point::new(25, 25),
             MonoTextStyle::new(&FONT_5X8, Rgb565::GREEN),
         )
         .draw(&mut display)
@@ -89,7 +89,7 @@ async fn text_animation_task(mut display: Display) {
         
         // Reset when text has scrolled completely off screen
         if scroll_offset < -text_width {
-            scroll_offset = 64;
+            scroll_offset = 32;
             message_index = (message_index + 1) % messages.len();
         }
         
@@ -107,24 +107,24 @@ async fn main(spawner: Spawner) {
     // Configure HUB75 pins using new nested structure
     let pins = Hub75Pins {
         rgb: Hub75RgbPins {
-            r1: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            r1: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
             g1: Output::new(p.P0_03, Level::Low, OutputDrive::Standard),
-            b1: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
-            r2: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
-            g2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
-            b2: Output::new(p.P0_07, Level::Low, OutputDrive::Standard),
+            b1: Output::new(p.P0_05, Level::Low, OutputDrive::Standard),
+            r2: Output::new(p.P0_04, Level::Low, OutputDrive::Standard),
+            g2: Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+            b2: Output::new(p.P0_06, Level::Low, OutputDrive::Standard),
         },
         address: Hub75AddressPins {
-            a: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
-            b: Output::new(p.P0_28, Level::Low, OutputDrive::Standard),
-            c: Output::new(p.P0_29, Level::Low, OutputDrive::Standard),
-            d: Some(Output::new(p.P0_30, Level::Low, OutputDrive::Standard)),
+            a: Output::new(p.P0_27, Level::Low, OutputDrive::Standard),
+            b: Output::new(p.P1_08, Level::Low, OutputDrive::Standard),
+            c: Output::new(p.P1_09, Level::Low, OutputDrive::Standard),
+            d: Some(Output::new(p.P0_26, Level::Low, OutputDrive::Standard)),
             e: None,
         },
         control: Hub75ControlPins {
-            clk: Output::new(p.P0_12, Level::Low, OutputDrive::Standard),
-            lat: Output::new(p.P0_13, Level::Low, OutputDrive::Standard),
-            oe: Output::new(p.P0_14, Level::High, OutputDrive::Standard),
+            clk: Output::new(p.P0_08, Level::Low, OutputDrive::Standard),
+            lat: Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
+            oe: Output::new(p.P0_25, Level::High, OutputDrive::Standard),
         },
     };
 
