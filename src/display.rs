@@ -327,7 +327,6 @@ where
         loop {
             if self.render_frame(delay).await.is_err() {
                 // Handle error - maybe reset pins or continue
-                delay.delay_ns(1_000_000).await; // 1ms
             }
         }
     }

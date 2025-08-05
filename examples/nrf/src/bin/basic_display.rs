@@ -28,17 +28,37 @@ use embedded_graphics::{
     primitives::{Circle, PrimitiveStyleBuilder, Rectangle},
     text::Text,
 };
+use embassy_sync::mutex::{Mutex};
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use hub75::{Hub75Display, Hub75Pins, Hub75RgbPins, Hub75AddressPins, Hub75ControlPins};
 use {defmt_rtt as _, panic_probe as _};
+use static_cell::StaticCell;
 
 type Display = Hub75Display<Output<'static>, 32, 32, 2>;
 
+static DISPLAY: StaticCell<Mutex<NoopRawMutex, Display>> = StaticCell::new();
+
 #[embassy_executor::task]
-async fn combined_display_task(mut display: Display) {
+pub async fn refresh_task(display: &'static Mutex<NoopRawMutex, Display>) -> ! {
+    let mut delay = embassy_time::Delay;
+
+    loop {
+        {
+        let mut handle = display.lock().await;
+        let _ = handle.render_frame(delay).await;
+        }
+        Timer::after(Duration::from_millis(1)).await;
+
+            
+        // if self.render_frame(delay).await.is_err() {
+        //     // Handle error - maybe reset pins or continue
+        // }
+    }
+}
+
+#[embassy_executor::task]
+async fn combined_display_task(display_handle: &'static Mutex<NoopRawMutex, Display>) {
     info!("Starting combined display and graphics task");
-    
-    // Enable double buffering for smooth updates
-    display.set_double_buffering(true);
 
     let mut counter = 0u32;
     
@@ -47,63 +67,61 @@ async fn combined_display_task(mut display: Display) {
 
     loop {
         // Clear the back buffer
-        // defmt::info!("LOOP");
-        display.clear();
+        defmt::info!("LOOP");
+        {
+            let mut display = display_handle.lock().await;
+            display.clear();
 
-        // Rectangle::new(Point::new(0, 0), Size::new(32,32))
-        //     .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build())
-        //     .draw(&mut display)
-        //     .unwrap();
+            Rectangle::new(Point::new(0, 0), Size::new(32,32))
+                .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::WHITE).build())
+                .draw(&mut display)
+                .unwrap();
 
-        // Draw a red rectangle
-        Rectangle::new(Point::new(5, 16), Size::new(2, 2))
-            .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::RED).build())
+            // Draw a red rectangle
+            Rectangle::new(Point::new(5, 16), Size::new(2, 2))
+                .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::RED).build())
+                .draw(&mut display)
+                .unwrap();
+
+            // Draw a green circle
+            Circle::new(Point::new(16, 16), 6)
+                .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::GREEN).build())
+                .draw(&mut display)
+                .unwrap();
+
+            // // Draw a blue rectangle
+            // Rectangle::new(Point::new(45, 2), Size::new(15, 12))
+            //     .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLUE).build())
+            //     .draw(&mut display)
+            //     .unwrap();
+
+            // // Draw counter text
+            // let mut text_buffer = heapless::String::<32>::new();
+            // core::fmt::write(&mut text_buffer, format_args!("Count: {}", counter)).unwrap();
+            
+            // Text::new(
+            //     &text_buffer,
+            //     Point::new(2, 25),
+            //     MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE),
+            // )
+            // .draw(&mut display)
+            // .unwrap();
+
+            // Show nRF52 info
+            Text::new(
+                "nRF52",
+                Point::new(2, 10),
+                MonoTextStyle::new(&FONT_6X10, Rgb565::CYAN),
+            )
             .draw(&mut display)
             .unwrap();
 
-        // Draw a green circle
-        Circle::new(Point::new(16, 16), 6)
-            .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::GREEN).build())
-            .draw(&mut display)
-            .unwrap();
-
-        // // Draw a blue rectangle
-        // Rectangle::new(Point::new(45, 2), Size::new(15, 12))
-        //     .into_styled(PrimitiveStyleBuilder::new().fill_color(Rgb565::BLUE).build())
-        //     .draw(&mut display)
-        //     .unwrap();
-
-        // // Draw counter text
-        // let mut text_buffer = heapless::String::<32>::new();
-        // core::fmt::write(&mut text_buffer, format_args!("Count: {}", counter)).unwrap();
-        
-        // Text::new(
-        //     &text_buffer,
-        //     Point::new(2, 25),
-        //     MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE),
-        // )
-        // .draw(&mut display)
-        // .unwrap();
-
-        // Show nRF52 info
-        Text::new(
-            "nRF52",
-            Point::new(2, 10),
-            MonoTextStyle::new(&FONT_6X10, Rgb565::CYAN),
-        )
-        .draw(&mut display)
-        .unwrap();
-
-        // Swap buffers to display the new frame
-        display.swap_buffers();
-
-        // Render the frame to the display
-        if let Err(e) = display.render_frame(&mut delay).await {
-            error!("Failed to render frame: {:?}", e);
+            // Swap buffers to display the new frame
+            display.swap_buffers();
         }
-
+        
         counter = counter.wrapping_add(1);
-        Timer::after(Duration::from_millis(2)).await;
+        Timer::after(Duration::from_millis(100)).await;
     }
 }
 
@@ -139,7 +157,7 @@ async fn main(spawner: Spawner) {
     };
 
     // Create the display
-    let display = match Hub75Display::new(pins) {
+    let mut display = match Hub75Display::new(pins) {
         Ok(display) => display,
         Err(e) => {
             error!("Failed to create display: {:?}", e);
@@ -147,10 +165,16 @@ async fn main(spawner: Spawner) {
         }
     };
     info!("Display initialized");
+        
+    // Enable double buffering for smooth updates
+    display.set_double_buffering(true);
+
+    let display = DISPLAY.init(Mutex::new(display));
 
     // Since the display can't be cloned, we need to use a different approach
     // For now, let's combine both tasks into one
     spawner.spawn(combined_display_task(display)).unwrap();
+    spawner.spawn(refresh_task(display)).unwrap();
 
     info!("Tasks spawned, entering main loop");
     
